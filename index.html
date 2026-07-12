@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ШахМатч 67 — против Карины из Краснодара</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0f2e1f;
+    --bg-2: #123726;
+    --panel: #163c29;
+    --gold: #e8b923;
+    --gold-dim: #a8860f;
+    --cream: #f4e3b2;
+    --olive: #5b6a34;
+    --text: #f7f3e8;
+    --text-dim: #b9c9ba;
+    --rose: #cf6b5a;
+    --radius: 18px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: radial-gradient(circle at 20% -10%, #1c4a30 0%, var(--bg) 55%), var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 24px 16px 60px;
+    overflow-x:hidden;
+  }
+  .sunflower-field{
+    position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.10;
+    background-image: radial-gradient(circle, var(--gold) 3px, transparent 3.5px);
+    background-size: 46px 46px;
+  }
+  header{ position:relative; z-index:1; text-align:center; max-width:640px; margin-bottom:18px;}
+  .eyebrow{
+    font-family:'Unbounded', sans-serif; font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color: var(--gold); opacity:.85; margin-bottom:6px;
+  }
+  h1{
+    font-family:'Unbounded', sans-serif; font-weight:900; font-size:clamp(28px,7vw,44px);
+    margin:0 0 6px; line-height:1.05; letter-spacing:-0.01em;
+  }
+  h1 span{ color: var(--gold); }
+  .sub{ color: var(--text-dim); font-size:14px; margin:0; }
+
+  .table{
+    position:relative; z-index:1;
+    width:100%; max-width:640px;
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+  }
+
+  .karina-card{
+    width:100%; background: linear-gradient(135deg, var(--panel), #1a4530);
+    border:1px solid rgba(232,185,35,.18);
+    border-radius: var(--radius);
+    padding:14px 16px;
+    display:flex; align-items:center; gap:12px;
+    box-shadow: 0 10px 30px -12px rgba(0,0,0,.5);
+  }
+  .karina-avatar{
+    width:46px; height:46px; border-radius:50%; flex:none;
+    background: conic-gradient(from 200deg, var(--gold), var(--rose), var(--gold));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Unbounded'; font-weight:700; font-size:18px; color:#1a1a1a;
+  }
+  .karina-text{ flex:1; min-width:0; }
+  .karina-name{ font-family:'Unbounded'; font-size:12px; letter-spacing:.05em; color:var(--gold); margin-bottom:2px;}
+  .karina-line{ font-size:14px; color:var(--text); min-height:20px; }
+
+  .status-row{
+    width:100%; display:flex; justify-content:space-between; align-items:center;
+    font-size:12px; color:var(--text-dim); padding:0 4px;
+  }
+  .status-row b{ color:var(--gold); font-family:'Unbounded'; }
+  #moveCounter.jackpot{ color: var(--rose); animation: pulse67 .6s ease-in-out infinite; }
+  @keyframes pulse67{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.18);} }
+
+  .board-wrap{
+    width:100%; aspect-ratio:1/1; max-width:560px;
+    border-radius: 14px; overflow:hidden;
+    border: 3px solid var(--gold-dim);
+    box-shadow: 0 20px 50px -20px rgba(0,0,0,.7), 0 0 0 8px var(--bg-2);
+    position:relative;
+  }
+  #board{
+    width:100%; height:100%;
+    display:grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+  }
+  .sq{ position:relative; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; }
+  .sq.light{ background: var(--cream); }
+  .sq.dark{ background: var(--olive); }
+  .sq .piece{ font-size: 7.4vw; max-font-size:44px; line-height:1; transition: transform .12s ease; }
+  @media(min-width:560px){ .sq .piece{ font-size:42px; } }
+  .sq.white .piece{ color:#fdfdfd; text-shadow: 0 1px 2px rgba(0,0,0,.55); }
+  .sq.black .piece{ color:#141414; text-shadow: 0 1px 1px rgba(255,255,255,.2); }
+  .sq.selected{ box-shadow: inset 0 0 0 3px var(--rose); }
+  .sq.legal::after{
+    content:''; position:absolute; width:26%; height:26%; border-radius:50%;
+    background: rgba(207,107,90,.55);
+  }
+  .sq.legal.has-piece::after{
+    width:100%; height:100%; border-radius:0; background:transparent;
+    box-shadow: inset 0 0 0 4px rgba(207,107,90,.75);
+  }
+  .sq.lastmove{ box-shadow: inset 0 0 0 3px rgba(232,185,35,.65); }
+  .sq label{
+    position:absolute; font-size:9px; opacity:.5; font-family:'Manrope'; font-weight:700;
+  }
+  .sq .file{ bottom:2px; right:3px; }
+  .sq .rank{ top:2px; left:3px; }
+
+  .controls{ display:flex; gap:10px; width:100%; max-width:560px; flex-wrap:wrap; }
+  button.btn{
+    flex:1; min-width:140px;
+    font-family:'Unbounded'; font-size:12px; letter-spacing:.03em;
+    background: var(--gold); color:#20200c; border:none; border-radius: 12px;
+    padding:13px 10px; cursor:pointer; font-weight:700;
+    transition: transform .1s ease, filter .15s ease;
+  }
+  button.btn:hover{ filter:brightness(1.08); transform: translateY(-1px); }
+  button.btn.ghost{
+    background: transparent; color: var(--text); border:1px solid rgba(247,243,232,.25);
+  }
+
+  .log-panel{
+    width:100%; max-width:560px; background: var(--panel); border-radius: 14px;
+    padding:12px 14px; font-size:12.5px; color:var(--text-dim);
+    border:1px solid rgba(255,255,255,.06);
+  }
+  .log-panel b{ color:var(--gold); font-family:'Unbounded'; font-size:10px; letter-spacing:.08em; text-transform:uppercase; }
+  #moveLog{ margin-top:6px; max-height:70px; overflow-y:auto; line-height:1.6; }
+
+  footer{ position:relative; z-index:1; margin-top:26px; text-align:center; color: var(--text-dim); font-size:11px; opacity:.7; }
+  footer b{ color: var(--gold); }
+
+  .confetti{
+    position:fixed; top:-10px; z-index:50; font-size:20px; pointer-events:none;
+    animation: fall linear forwards;
+  }
+  @keyframes fall{ to{ transform: translateY(110vh) rotate(400deg); opacity:.2; } }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background: var(--rose); color:#2a1410; font-family:'Unbounded'; font-size:12px;
+    padding:12px 18px; border-radius:999px; z-index:60; box-shadow:0 10px 30px -10px rgba(0,0,0,.6);
+    animation: toastIn .3s ease, toastOut .3s ease 2.4s forwards;
+  }
+  @keyframes toastIn{ from{opacity:0; transform:translateX(-50%) translateY(10px);} to{opacity:1; transform:translateX(-50%) translateY(0);} }
+  @keyframes toastOut{ to{opacity:0; transform:translateX(-50%) translateY(10px);} }
+</style>
+</head>
+<body>
+
+<div class="sunflower-field"></div>
+
+<header>
+  <div class="eyebrow">Краснодарский шахматный клуб · неофициально</div>
+  <h1>ШахМатч <span>67</span></h1>
+  <p class="sub">Ты играешь белыми против Карины — бота с характером и прошивкой из Краснодара.</p>
+</header>
+
+<div class="table">
+
+  <div class="karina-card">
+    <div class="karina-avatar">К</div>
+    <div class="karina-text">
+      <div class="karina-name">КАРИНА · онлайн из Краснодара</div>
+      <div class="karina-line" id="karinaLine">Го, погнали. Только не думай долго — у меня маршрутка на Красную через 20 минут.</div>
+    </div>
+  </div>
+
+  <div class="status-row">
+    <span>Ход: <b id="turnLabel">Белые</b></span>
+    <span>Счётчик ходов: <b id="moveCounter">0</b></span>
+  </div>
+
+  <div class="board-wrap">
+    <div id="board"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="newGameBtn">Новая партия</button>
+    <button class="btn ghost" id="undoBtn">Отменить ход</button>
+  </div>
+
+  <div class="log-panel">
+    <b>Журнал партии</b>
+    <div id="moveLog">Партия ещё не начата.</div>
+  </div>
+</div>
+
+<footer>Сделано на коленке между Ереваном и Краснодаром. Секретное число: <b>67</b>.</footer>
+
+<script>
+/* ---------- Telegram Mini App bootstrap ---------- */
+try{
+  if(window.Telegram && window.Telegram.WebApp){
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+    Telegram.WebApp.setHeaderColor && Telegram.WebApp.setHeaderColor('#0f2e1f');
+    Telegram.WebApp.setBackgroundColor && Telegram.WebApp.setBackgroundColor('#0f2e1f');
+  }
+}catch(e){ /* not inside Telegram, fine */ }
+
+/* ---------- Chess setup ---------- */
+const game = new Chess();
+const boardEl = document.getElementById('board');
+const files = ['a','b','c','d','e','f','g','h'];
+const pieceUnicode = {
+  p:'♟', r:'♜', n:'♞', b:'♝', q:'♛', k:'♚',
+  P:'♙', R:'♖', N:'♘', B:'♗', Q:'♕', K:'♔'
+};
+
+let selectedSquare = null;
+let legalTargets = [];
+let lastMove = null;
+let totalPlies = 0;
+
+const karinaLine = document.getElementById('karinaLine');
+const moveCounterEl = document.getElementById('moveCounter');
+const turnLabelEl = document.getElementById('turnLabel');
+const moveLogEl = document.getElementById('moveLog');
+
+const KARINA_OPENERS = [
+  "Смотри, я из Краснодара, у нас тут даже голуби играют в шахматы лучше, чем некоторые.",
+  "Погнали, только я сегодня после тренировки, могу и зевнуть фигуру.",
+  "У нас в Краснодаре говорят: сначала кубанский борщ, потом шах и мат.",
+  "Число 67 сегодня со мной — не удивляйся, если повезёт именно на этом ходу."
+];
+const KARINA_ON_CAPTURE = [
+  "Ауч. Ладно, спишем на кубанское гостеприимство.",
+  "Забрала фигуру — как местные забирают место на пляже в Джемете.",
+  "67 раз говорила себе не подставляться, и вот опять."
+];
+const KARINA_ON_CHECK = [
+  "Шах! Как в пробке на Дмитриевской дамбе — деваться некуда.",
+  "Осторожно, шах — я в Краснодаре и то быстрее реагирую."
+];
+const KARINA_ON_MATE = [
+  "Мат. Ну всё, я поехала жаловаться маме в Краснодар.",
+  "Сдаюсь — беру билет на автобус 67 и еду обратно на юг зализывать раны."
+];
+const KARINA_IDLE = [
+  "Ты думаешь, а я тем временем вспоминаю набережную в Краснодаре.",
+  "Кстати, ты знал что в Краснодаре 67 фонтанов в парке Галицкого? Может, вру, но звучит красиво.",
+  "Ходи давай, а то маршрутка не резиновая."
+];
+
+function say(list){
+  karinaLine.textContent = list[Math.floor(Math.random()*list.length)];
+}
+
+/* ---------- Board rendering ---------- */
+function squareId(file, rank){ return files[file] + rank; }
+
+function buildBoard(){
+  boardEl.innerHTML = '';
+  for(let rank = 8; rank >= 1; rank--){
+    for(let f = 0; f < 8; f++){
+      const id = squareId(f, rank);
+      const isLight = (f + rank) % 2 === 1;
+      const div = document.createElement('div');
+      div.className = 'sq ' + (isLight ? 'light' : 'dark');
+      div.dataset.square = id;
+      div.addEventListener('click', () => onSquareClick(id));
+      if(f === 0){
+        const rl = document.createElement('label');
+        rl.className = 'rank'; rl.textContent = rank;
+        div.appendChild(rl);
+      }
+      if(rank === 1){
+        const fl = document.createElement('label');
+        fl.className = 'file'; fl.textContent = files[f];
+        div.appendChild(fl);
+      }
+      boardEl.appendChild(div);
+    }
+  }
+  render();
+}
+
+function render(){
+  const boardState = game.board(); // 8x8, [0] = rank8
+  document.querySelectorAll('.sq').forEach(sq => {
+    sq.classList.remove('selected','legal','has-piece','lastmove','white','black');
+    const existingPiece = sq.querySelector('.piece');
+    if(existingPiece) existingPiece.remove();
+  });
+
+  for(let r = 0; r < 8; r++){
+    for(let f = 0; f < 8; f++){
+      const cell = boardState[r][f];
+      if(!cell) continue;
+      const rank = 8 - r;
+      const id = squareId(f, rank);
+      const sqEl = boardEl.querySelector(`[data-square="${id}"]`);
+      const span = document.createElement('span');
+      span.className = 'piece';
+      span.textContent = pieceUnicode[cell.color === 'w' ? cell.type.toUpperCase() : cell.type];
+      sqEl.classList.add(cell.color === 'w' ? 'white' : 'black');
+      sqEl.appendChild(span);
+    }
+  }
+
+  if(selectedSquare){
+    boardEl.querySelector(`[data-square="${selectedSquare}"]`).classList.add('selected');
+  }
+  legalTargets.forEach(t => {
+    const el = boardEl.querySelector(`[data-square="${t.to}"]`);
+    el.classList.add('legal');
+    if(t.flags.includes('c') || t.flags.includes('e')) el.classList.add('has-piece');
+  });
+  if(lastMove){
+    const fromEl = boardEl.querySelector(`[data-square="${lastMove.from}"]`);
+    const toEl = boardEl.querySelector(`[data-square="${lastMove.to}"]`);
+    if(fromEl) fromEl.classList.add('lastmove');
+    if(toEl) toEl.classList.add('lastmove');
+  }
+
+  turnLabelEl.textContent = game.turn() === 'w' ? 'Белые' : 'Карина думает…';
+  moveCounterEl.textContent = totalPlies;
+  moveCounterEl.classList.toggle('jackpot', totalPlies === 67);
+}
+
+/* ---------- Interaction ---------- */
+function onSquareClick(id){
+  if(game.game_over() || game.turn() !== 'w') return;
+
+  if(selectedSquare === id){
+    selectedSquare = null; legalTargets = []; render(); return;
+  }
+
+  if(selectedSquare){
+    const move = legalTargets.find(m => m.to === id);
+    if(move){
+      makeMove(selectedSquare, id);
+      selectedSquare = null; legalTargets = [];
+      render();
+      if(!game.game_over()){
+        setTimeout(karinaMove, 550);
+      }
+      return;
+    }
+  }
+
+  const piece = game.get(id);
+  if(piece && piece.color === 'w'){
+    selectedSquare = id;
+    legalTargets = game.moves({ square: id, verbose: true });
+  } else {
+    selectedSquare = null; legalTargets = [];
+  }
+  render();
+}
+
+function makeMove(from, to){
+  const verboseMoves = game.moves({ square: from, verbose: true });
+  const needsPromotion = verboseMoves.some(m => m.to === to && m.flags.includes('p'));
+  const moveObj = { from, to };
+  if(needsPromotion) moveObj.promotion = 'q';
+  const wasCapture = !!game.get(to);
+  const result = game.move(moveObj);
+  if(!result) return;
+  totalPlies++;
+  lastMove = { from, to };
+  logMove(result);
+
+  if(wasCapture || result.flags.includes('e')){
+    say(KARINA_ON_CAPTURE);
+  }
+  if(totalPlies === 67){
+    fireConfetti('67');
+    toast('Ход №67. Карина клянётся, что это судьба.');
+  }
+  checkGameEnd();
+}
+
+function logMove(result){
+  const entry = document.createElement('div');
+  const n = Math.ceil(totalPlies / 2);
+  const prefix = result.color === 'w' ? `${n}.` : '';
+  entry.textContent = `${prefix} ${result.san}`;
+  if(moveLogEl.textContent.includes('не начата')) moveLogEl.textContent = '';
+  moveLogEl.appendChild(entry);
+  moveLogEl.scrollTop = moveLogEl.scrollHeight;
+}
+
+function checkGameEnd(){
+  if(game.in_checkmate()){
+    say(KARINA_ON_MATE);
+    fireConfetti(game.turn() === 'b' ? '🏆' : '😅');
+    toast(game.turn() === 'b' ? 'Мат! Карина едет домой в Краснодар.' : 'Карина поставила мат. Реванш?');
+  } else if(game.in_check()){
+    say(KARINA_ON_CHECK);
+  } else if(game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()){
+    toast('Ничья. Как будто договорились на нейтральной территории между Ереваном и Краснодаром.');
+  } else if(game.turn() === 'w'){
+    say(KARINA_IDLE);
+  }
+}
+
+/* ---------- Simple Karina AI (minimax, depth 2, alpha-beta) ---------- */
+const VALUES = { p:100, n:320, b:330, r:500, q:900, k:0 };
+
+function evaluateBoard(){
+  let score = 0;
+  const b = game.board();
+  for(let r=0;r<8;r++){
+    for(let f=0;f<8;f++){
+      const cell = b[r][f];
+      if(!cell) continue;
+      const v = VALUES[cell.type];
+      score += cell.color === 'b' ? v : -v;
+    }
+  }
+  return score;
+}
+
+function minimax(depth, alpha, beta, maximizing){
+  if(depth === 0 || game.game_over()){
+    return evaluateBoard() + (Math.random()*6 - 3); // small jitter so Karina isn't robotic
+  }
+  const moves = game.moves();
+  if(maximizing){
+    let best = -Infinity;
+    for(const m of moves){
+      game.move(m);
+      best = Math.max(best, minimax(depth-1, alpha, beta, false));
+      game.undo();
+      alpha = Math.max(alpha, best);
+      if(beta <= alpha) break;
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for(const m of moves){
+      game.move(m);
+      best = Math.min(best, minimax(depth-1, alpha, beta, true));
+      game.undo();
+      beta = Math.min(beta, best);
+      if(beta <= alpha) break;
+    }
+    return best;
+  }
+}
+
+function karinaMove(){
+  if(game.game_over() || game.turn() !== 'b') return;
+  const moves = game.moves({ verbose: true });
+  let bestScore = -Infinity;
+  let bestMoves = [];
+  for(const m of moves){
+    game.move(m);
+    const score = minimax(2, -Infinity, Infinity, false);
+    game.undo();
+    if(score > bestScore + 0.001){
+      bestScore = score; bestMoves = [m];
+    } else if(Math.abs(score - bestScore) < 0.001){
+      bestMoves.push(m);
+    }
+  }
+  const chosen = bestMoves[Math.floor(Math.random()*bestMoves.length)];
+  const wasCapture = !!game.get(chosen.to);
+  const result = game.move({ from: chosen.from, to: chosen.to, promotion: 'q' });
+  totalPlies++;
+  lastMove = { from: chosen.from, to: chosen.to };
+  logMove(result);
+  if(wasCapture) say(KARINA_ON_CAPTURE);
+  if(totalPlies === 67){
+    fireConfetti('67');
+    toast('Ход №67. Карина клянётся, что это судьба.');
+  }
+  render();
+  checkGameEnd();
+}
+
+/* ---------- FX ---------- */
+function fireConfetti(symbol){
+  for(let i=0;i<24;i++){
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.textContent = symbol;
+    el.style.left = Math.random()*100 + 'vw';
+    el.style.animationDuration = (2 + Math.random()*1.5) + 's';
+    el.style.fontSize = (14 + Math.random()*18) + 'px';
+    document.body.appendChild(el);
+    setTimeout(()=> el.remove(), 3600);
+  }
+}
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=> t.remove(), 2800);
+}
+
+/* ---------- Controls ---------- */
+document.getElementById('newGameBtn').addEventListener('click', () => {
+  game.reset();
+  selectedSquare = null; legalTargets = []; lastMove = null; totalPlies = 0;
+  moveLogEl.textContent = 'Партия ещё не начата.';
+  say(KARINA_OPENERS);
+  render();
+});
+document.getElementById('undoBtn').addEventListener('click', () => {
+  game.undo(); game.undo(); // undo Karina's move and yours
+  totalPlies = Math.max(0, totalPlies - 2);
+  selectedSquare = null; legalTargets = [];
+  const hist = game.history({verbose:true});
+  lastMove = hist.length ? { from: hist[hist.length-1].from, to: hist[hist.length-1].to } : null;
+  render();
+});
+
+/* ---------- Init ---------- */
+say(KARINA_OPENERS);
+buildBoard();
+</script>
+</body>
+</html>
