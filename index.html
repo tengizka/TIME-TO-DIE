@@ -1341,6 +1341,28 @@ function tgHandle(){
   return tgUser.username ? '@' + tgUser.username : (tgUser.first_name || 'субъект');
 }
 
+/* ═══════════ ИСКЛЮЧЕНИЯ РЕЕСТРА ═══════════ */
+/*
+  Персональные записи, которые Реестр «выдал вручную» в обход общего
+  распределения. Матчинг по username или числовому id аккаунта.
+  Исключение перебивает всё, включая уже замороженный вердикт:
+  если у субъекта найдена старая запись без метки ov, она пересоздаётся.
+*/
+var OVERRIDES = [
+  { u:'golfcartowner', years:282 }
+];
+function overrideYears(){
+  if(!tgUser) return null;
+  var un = (tgUser.username || '').toLowerCase();
+  var id = tgUser.id;
+  for(var i = 0; i < OVERRIDES.length; i++){
+    var o = OVERRIDES[i];
+    if(o.u && un && un === o.u) return o.years;
+    if(o.id && id && id === o.id) return o.years;
+  }
+  return null;
+}
+
 /* ═══════════ ДИКИЙ РАНДОМ СРОКА ═══════════ */
 /*
   Остаток жизни вытягивается из аккаунта и может быть любым:
@@ -1359,7 +1381,7 @@ var SPANS = [
 ];
 
 /* ═══════════ VERDICT CALCULATION ═══════════ */
-function computeVerdict(name, birthISO, storedDeath){
+function computeVerdict(name, birthISO, storedDeath, ovYears){
   var identity = subjectIdentity(name, birthISO);
   var seed = xmur3(SALT + '::' + identity);
   /* два независимых потока из одного сида:
@@ -1380,11 +1402,21 @@ function computeVerdict(name, birthISO, storedDeath){
   }else{
     /* точка отсчёта — полночь дня первого запроса; дальше дата замораживается в хранилище */
     var base = midnightToday().getTime();
-    var u = rndT(), i;
-    span = SPANS[SPANS.length - 1];
-    for(i = 0; i < SPANS.length; i++){ if(u < SPANS[i].c){ span = SPANS[i]; break; } }
-    daysLeft = Math.round(span.a + rndT() * (span.b - span.a));
-    death = new Date(base + daysLeft * 86400000);
+    var u, i;
+    if(ovYears){
+      /* исключение Реестра: срок выдаётся вручную, в обход распределения.
+         +1 день компенсирует округление вниз по времени суток, чтобы
+         крупное число показывало ровно заказанные годы (282, не 281) */
+      span = SPANS[SPANS.length - 1];
+      daysLeft = Math.ceil(ovYears * 365.2425) + 1;
+      death = new Date(base + daysLeft * 86400000);
+    }else{
+      u = rndT();
+      span = SPANS[SPANS.length - 1];
+      for(i = 0; i < SPANS.length; i++){ if(u < SPANS[i].c){ span = SPANS[i]; break; } }
+      daysLeft = Math.round(span.a + rndT() * (span.b - span.a));
+      death = new Date(base + daysLeft * 86400000);
+    }
 
     /* точное время — с перекосом в «ведьмин час» */
     var tr = rndT(), hour;
@@ -1418,11 +1450,19 @@ function computeVerdict(name, birthISO, storedDeath){
 
   /* отметка Реестра о сроке */
   var anomaly = null;
-  if(daysLeft <= 7)        anomaly = 'КРИТИЧЕСКИЙ СРОК: обрыв в течение недели. Реестр рекомендует завершить дела.';
+  if(ovYears){
+    /* субъект с исключением: все умирают раньше него, Реестр в замешательстве */
+    percentile = 0;
+    anomaly = 'ИСКЛЮЧЕНИЕ ИЗ РЕЕСТРА: срок ' + ovYears + ' ' + plural(ovYears, 'год', 'года', 'лет') +
+      ' превышает все расчётные пределы. Реестр не может это объяснить.';
+  }else if(daysLeft <= 7){
+    anomaly = 'КРИТИЧЕСКИЙ СРОК: обрыв в течение недели. Реестр рекомендует завершить дела.';
+  }
   else if(daysLeft <= 31)  anomaly = 'ОТМЕТКА: обрыв в течение месяца. Детали закрыты.';
   else if(daysLeft >= 27394) anomaly = 'АНОМАЛИЯ: срок превышает расчётный максимум. Реестр не объясняет.';
 
   return {
+    ov: !!ovYears,
     identity: identity,
     code: subjectCode(identity),
     bound: !!(tgUser && tgUser.id),
@@ -1472,7 +1512,7 @@ function registry(){
 function saveVerdict(v){
   try{
     var r = registry();
-    r[v.identity] = { deathISO:v.deathISO, name:v.name, birthISO:v.birthISO, at:Date.now() };
+    r[v.identity] = { deathISO:v.deathISO, name:v.name, birthISO:v.birthISO, ov:!!v.ov, at:Date.now() };
     localStorage.setItem(LS_KEY, JSON.stringify(r));
   }catch(e){}
 }
@@ -1608,11 +1648,23 @@ function recordForCurrent(){
 }
 function route(){
   var rec = recordForCurrent();
-  if(rec && rec.deathISO){ openExisting(rec); }
+  var ov = overrideYears();
+  if(rec && rec.deathISO){
+    /* у субъекта есть старая запись без метки исключения — пересоздаём под исключение */
+    if(ov !== null && !rec.ov){
+      var v = computeVerdict(rec.name || '', rec.birthISO || '1970-01-01', null, ov);
+      saveVerdict(v);
+      presentVerdict(v);
+      return;
+    }
+    openExisting(rec);
+  }
   else{ enterForm(); }
 }
 function openExisting(rec){
-  var v = computeVerdict(rec.name || '', rec.birthISO || '1970-01-01', rec.deathISO);
+  presentVerdict(computeVerdict(rec.name || '', rec.birthISO || '1970-01-01', rec.deathISO, overrideYears()));
+}
+function presentVerdict(v){
   current = v;
   ambientStart();
   if(v.isPast){
@@ -1702,9 +1754,11 @@ function startScan(name, birthISO){
   ringEl.textContent = '0%';
   stageEl.textContent = SCAN_STAGES[0].t;
 
-  /* если этому аккаунту уже выдан срок — берём замороженную дату, а не новую */
+  /* если этому аккаунту уже выдан срок — берём замороженную дату, а не новую.
+     Исключение Реестра перебивает замороженную запись. */
+  var ov = overrideYears();
   var saved = loadSaved(name, birthISO);
-  var v = computeVerdict(name, birthISO, saved ? saved.deathISO : null);
+  var v = computeVerdict(name, birthISO, (ov === null && saved) ? saved.deathISO : null, ov);
 
   var prog = 0, logIdx = 0, stageIdx = 0, scared = false, done = false, riserOn = false, subbed = false;
   var dur = 8200;
@@ -1966,8 +2020,15 @@ function tickCountdown(){
 
   if(sec !== lastSec){
     lastSec = sec;
-    animateDays(days);
-    $('#cdDaysW').textContent = plural(days, 'ДЕНЬ', 'ДНЯ', 'ДНЕЙ');
+    /* для аномально длинных сроков (исключения Реестра) крупное число —
+       годы, а дни уходят в подпись: «282 ГОДА · 103 000 ДНЕЙ» */
+    if(days >= 36525){
+      var yrs = Math.floor(days / 365.2425);
+      setDays(String(yrs), plural(yrs, 'ГОД', 'ГОДА', 'ГОД') +
+        ' · ' + fmtBig(days) + ' ' + plural(days, 'ДЕНЬ', 'ДНЯ', 'ДНЕЙ'));
+    }else{
+      setDays(fmtBig(days), plural(days, 'ДЕНЬ', 'ДНЯ', 'ДНЕЙ'));
+    }
     $('#cdH').textContent = pad(h);
     $('#cdM').textContent = pad(m);
     $('#cdS').textContent = pad(sec);
@@ -1978,18 +2039,18 @@ function tickCountdown(){
     if(hb.style.animationDuration !== rate) hb.style.animationDuration = rate;
   }
 }
-var shownDays = -1;
-function animateDays(n){
-  if(n === shownDays){ return; }
-  shownDays = n;
+function setDays(disp, unit){
   var el = $('#cdDays');
-  el.textContent = fmtBig(n);
-  if(!reduceMotion){
-    el.animate ? el.animate(
-      [{ opacity:0.55, transform:'translateY(-3px)' }, { opacity:1, transform:'none' }],
-      { duration:260, easing:'ease-out' }
-    ) : null;
+  if(el.textContent !== disp){
+    el.textContent = disp;
+    if(!reduceMotion && el.animate){
+      el.animate(
+        [{ opacity:0.55, transform:'translateY(-3px)' }, { opacity:1, transform:'none' }],
+        { duration:260, easing:'ease-out' }
+      );
+    }
   }
+  $('#cdDaysW').textContent = unit;
 }
 
 /* ═══════════ CUSTOM DATE PICKER ═══════════ */
