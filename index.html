@@ -112,7 +112,13 @@ button{background:none;border:0;cursor:pointer}
 .splash-log{
   font-size:10.5px;color:var(--dimmer);min-height:16px;letter-spacing:.06em;text-align:center;
 }
-.splash-foot{position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:9.5px;color:#2c2c2c;letter-spacing:.18em}
+.splash-foot{position:absolute;bottom:24px;left:0;right:0;text-align:center;font-size:10.5px;color:#3a3a3a;letter-spacing:.3em;text-indent:.3em;text-transform:lowercase}
+.splash-foot b{
+  color:#b00d18;font-weight:400;
+  text-shadow:0 0 14px rgba(176,13,24,.6),0 0 34px rgba(92,0,9,.5);
+  animation:bloodPulse 3.6s ease-in-out infinite;
+}
+@keyframes bloodPulse{0%,100%{color:#b00d18}50%{color:#e01220}}
 
 /* ───────── TITLES ───────── */
 .glitch{position:relative;display:inline-block}
@@ -184,6 +190,7 @@ button{background:none;border:0;cursor:pointer}
   margin-top:14px;text-align:center;font-size:10.5px;color:var(--dim);letter-spacing:.06em;
 }
 .saved-hint button{color:var(--red);text-decoration:underline;text-underline-offset:3px;font-size:10.5px}
+.saved-hint b{color:var(--red);font-weight:400;letter-spacing:.08em}
 
 /* ───────── EULA ───────── */
 #eula{
@@ -262,7 +269,7 @@ button{background:none;border:0;cursor:pointer}
 .vlabel.r{color:var(--red-soft)}
 .vname{
   text-align:center;font-family:var(--disp);font-weight:300;font-size:15px;
-  letter-spacing:.3em;color:#9a9a9a;text-transform:uppercase;margin-bottom:20px;text-indent:.3em;
+  letter-spacing:.3em;color:#9a9a9a;text-transform:uppercase;margin-bottom:8px;text-indent:.3em;
 }
 .vdate{
   text-align:center;font-family:var(--disp);font-weight:700;
@@ -387,7 +394,20 @@ button{background:none;border:0;cursor:pointer}
 /* tap hint easter egg */
 .hidden-tap{position:fixed;bottom:6px;right:8px;z-index:50;font-size:8px;color:#191919;letter-spacing:.1em}
 
-.fade-up{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.acct{
+  display:flex;align-items:center;gap:9px;justify-content:center;text-align:center;
+  border:1px solid var(--line);background:#080808;border-radius:3px;
+  padding:9px 11px;font-size:9.5px;letter-spacing:.14em;color:var(--dim);margin-bottom:20px;
+}
+.acct .dot{width:6px;height:6px;min-width:6px;border-radius:50%;background:var(--red);box-shadow:0 0 9px var(--red);animation:dotPulse 1.9s ease-in-out infinite}
+@keyframes dotPulse{0%,100%{opacity:1}50%{opacity:.22}}
+.acct b{color:#b0b0b0;font-weight:400}
+.acct.off .dot{background:#333;box-shadow:none;animation:none}
+.acct.off{color:#3f3f3f}
+.vid{text-align:center;font-size:9.5px;letter-spacing:.26em;color:#434343;text-indent:.26em;margin-bottom:20px}
+.vid b{color:#7a7a7a;font-weight:400}
+.dead-note{margin-top:18px;font-size:11px;color:var(--red);letter-spacing:.14em;min-height:16px}
+
 .fade-up.in{opacity:1;transform:none}
 
 /* низкие экраны — уменьшаем HUD сканирования */
@@ -427,7 +447,7 @@ button{background:none;border:0;cursor:pointer}
   </div>
   <div class="splash-bar"><div class="splash-fill" id="sfill"></div></div>
   <div class="splash-log" id="slog">&nbsp;</div>
-  <div class="splash-foot">v2.4.1 &nbsp;·&nbsp; REGISTRY OF FATES</div>
+  <div class="splash-foot">made <b>tengizka</b></div>
 </div>
 
 <div class="wrap">
@@ -440,32 +460,34 @@ button{background:none;border:0;cursor:pointer}
     </div>
     <div class="rule"></div>
 
+    <div class="acct off" id="acct">
+      <span class="dot"></span>
+      <span id="acctTxt">ПОИСК АККАУНТА…</span>
+    </div>
+
     <div class="field" id="f-name">
       <label for="i-name">Имя субъекта</label>
       <input id="i-name" type="text" maxlength="40" placeholder="ВВЕДИ ИМЯ" autocomplete="off" spellcheck="false"/>
-      <div class="note">Имя используется как идентификатор в Реестре. Оно не меняется.</div>
+      <div class="note">Так Реестр будет к тебе обращаться. На срок не влияет.</div>
     </div>
 
     <div class="field" id="f-birth">
       <label for="i-birth">Дата рождения</label>
       <input id="i-birth" type="date" min="1900-01-01"/>
-      <div class="note">Точка отсчёта. Ошибка в дате изменит всё.</div>
+      <div class="note">Точка отсчёта. Нужна, чтобы понять, сколько ты уже прожил.</div>
     </div>
 
     <button class="btn" id="go">Узнать дату смерти</button>
 
     <div class="saved-hint" id="savedHint" style="display:none">
-      Вердикт уже вынесен. <button id="reopen">Открыть его снова →</button>
+      Вердикт этому аккаунту уже вынесен: <b id="savedDeath">—</b><br/>
+      <button id="reopen">Открыть его снова →</button>
     </div>
 
     <div class="warn-box">
-      <b>ВНИМАНИЕ.</b> Приложение подключено к Реестру судеб. Результат
-      формируется один раз и не пересматривается. Удаление приложения
-      не отменяет вердикт.
-    </div>
-    <div class="disclaimer">
-      Это развлекательное приложение. Все предсказания вымышлены.<br/>
-      <b>Живи долго.</b>
+      <b>ВНИМАНИЕ.</b> Срок выдаётся один раз и навсегда привязывается
+      к аккаунту Telegram. Он не пересматривается: смена имени, даты
+      рождения или переустановка приложения ничего не изменят.
     </div>
   </section>
 
@@ -490,12 +512,13 @@ button{background:none;border:0;cursor:pointer}
       <span>TIME TO DIE</span>
       <span style="display:flex;gap:16px">
         <button id="sndBtn">ЗВУК: ВКЛ</button>
-        <button id="resetBtn">ДАННЫЕ</button>
+        <button id="resetBtn">АНКЕТА</button>
       </span>
     </div>
 
     <div class="vlabel r fade-up">ВЕРДИКТ ВЫНЕСЕН</div>
     <div class="vname fade-up" id="vName">—</div>
+    <div class="vid fade-up" id="vId">—</div>
     <div class="vdate fade-up" id="vDate">—</div>
     <div class="vtime fade-up" id="vTime">—</div>
 
@@ -544,24 +567,26 @@ button{background:none;border:0;cursor:pointer}
     </div>
 
     <div class="btnrow fade-up">
-      <button class="btn ghost" id="againBtn">Заново</button>
-      <button class="btn ghost" id="hideBtn">Скрыть</button>
+      <button class="btn ghost" id="againBtn">К анкете</button>
+      <button class="btn ghost" id="hideBtn">Пересканировать</button>
     </div>
   </section>
 
   <!-- ══ DEAD ══ -->
   <section class="screen" id="dead">
     <div class="static"></div>
-    <h2 class="glitch" data-t="СУБЪЕКТ МЁРТВ">СУБЪЕКТ МЁРТВ</h2>
+    <h2 class="glitch" data-t="ВРЕМЯ ВЫШЛО">ВРЕМЯ ВЫШЛО</h2>
     <p>
-      Запрошенная дата оборва находится в прошлом.<br/><br/>
-      Реестр не содержит записей о живом субъекте
-      с указанными параметрами.<br/><br/>
-      Если ты это читаешь — значит, данные ошиблись.
+      Срок, выданный этому аккаунту, истёк
+      <span id="deadWhen" style="color:#8a8a8a"></span>.<br/><br/>
+      Реестр больше не отслеживает субъекта и не выдаёт
+      новых дат.<br/><br/>
+      Если ты это читаешь — значит, расчёт ошибся.<br/>
       Или читает кто-то другой.
     </p>
+    <div class="dead-note" id="deadNote"></div>
     <div class="code" id="deadCode">ERR 0x00 · NO SIGNAL</div>
-    <div class="btnrow" style="margin-top:28px">
+    <div class="btnrow" style="margin-top:20px">
       <button class="btn ghost" id="deadBack">Ввести другие данные</button>
     </div>
   </section>
@@ -657,7 +682,7 @@ function mulberry32(a){
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-var SALT = 'TIME-TO-DIE::registry-of-fates::v1';
+var SALT = 'TIME-TO-DIE::registry-of-fates::v3';
 
 /* ═══════════ DATA POOLS ═══════════ */
 var CAUSES = [
@@ -888,103 +913,182 @@ function show(id){
   window.scrollTo(0, 0);
 }
 
+/* ═══════════ ИДЕНТИФИКАЦИЯ СУБЪЕКТА ═══════════ */
+/*
+  Вердикт привязан к аккаунту Telegram. Внутри Telegram идентификатор —
+  user.id из initDataUnsafe, и он не зависит от введённых имени и даты:
+  сменить дату в анкете и получить новый срок не выйдет.
+
+  Вне Telegram (обычный браузер) идентификатор собирается из имени и даты
+  рождения, чтобы приложение оставалось детерминированным и там.
+*/
+function normName(s){ return (s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+
+function subjectIdentity(name, birthISO){
+  if(tgUser && tgUser.id) return 'TG#' + tgUser.id;
+  return 'GUEST#' + normName(name) + '#' + birthISO;
+}
+function subjectCode(identity){
+  /* короткая человекочитаемая метка аккаунта для вывода на экран */
+  var n = xmur3(SALT + '::code::' + identity)() % 900000 + 100000;
+  return String(n);
+}
+function tgHandle(){
+  if(!tgUser) return null;
+  return tgUser.username ? '@' + tgUser.username : (tgUser.first_name || 'субъект');
+}
+
+/* ═══════════ ДИКИЙ РАНДОМ СРОКА ═══════════ */
+/*
+  Остаток жизни вытягивается из аккаунта и может быть любым:
+  от нескольких дней до ста лет. Накопленная доля `c` задаёт вес корзины.
+*/
+var SPANS = [
+  { c:0.06, a:1,     b:5,      label:'ДНИ'      },  /*  1–5 дней      */
+  { c:0.14, a:5,     b:31,     label:'ДНИ'      },  /*  до месяца     */
+  { c:0.24, a:31,    b:181,    label:'НЕДЕЛИ'   },  /*  1–6 месяцев   */
+  { c:0.36, a:181,   b:731,    label:'МЕСЯЦЫ'   },  /*  до 2 лет      */
+  { c:0.52, a:731,   b:3653,   label:'ГОДЫ'     },  /*  2–10 лет      */
+  { c:0.70, a:3653,  b:10958,  label:'ГОДЫ'     },  /*  10–30 лет     */
+  { c:0.88, a:10958, b:20089,  label:'ГОДЫ'     },  /*  30–55 лет     */
+  { c:0.97, a:20089, b:27394,  label:'ДЕСЯТИЛ.' },  /*  55–75 лет     */
+  { c:1.01, a:27394, b:36525,  label:'АНОМАЛИЯ' }   /*  75–100 лет    */
+];
+
 /* ═══════════ VERDICT CALCULATION ═══════════ */
-function computeVerdict(name, birthISO){
-  var key = (name || '').trim().toLowerCase().replace(/\s+/g, ' ') + '|' + birthISO;
-  var seedFn = xmur3(SALT + '::' + key);
-  var rnd = mulberry32(seedFn());
+function computeVerdict(name, birthISO, storedDeath){
+  var identity = subjectIdentity(name, birthISO);
+  var seed = xmur3(SALT + '::' + identity);
+  /* два независимых потока из одного сида:
+     rndT — только про дату (может не использоваться вовсе),
+     rnd  — причина, процентиль, отметки. Он не зависит от того,
+            пересчитываем мы дату или берём замороженную. */
+  var rndT = mulberry32(seed());
+  var rnd = mulberry32(seed());
 
   var birth = parseISO(birthISO);
+  var death, daysLeft, span;
 
-  /* возраст смерти — взвешенное распределение */
-  var roll = rnd(), age;
-  if(roll < 0.10)      age = 34 + Math.floor(rnd() * 26);   /* 34–59  */
-  else if(roll < 0.62) age = 60 + Math.floor(rnd() * 25);   /* 60–84  */
-  else if(roll < 0.89) age = 85 + Math.floor(rnd() * 12);   /* 85–96  */
-  else if(roll < 0.975) age = 97 + Math.floor(rnd() * 16);  /* 97–112 */
-  else                 age = 113 + Math.floor(rnd() * 21);  /* 113–133 аномалия */
+  if(storedDeath){
+    /* вердикт уже вынесен этому аккаунту — дата окончательна и не пересчитывается */
+    death = new Date(storedDeath);
+    daysLeft = Math.round((death - midnightToday()) / 86400000);
+    span = spanOf(daysLeft);
+  }else{
+    /* точка отсчёта — полночь дня первого запроса; дальше дата замораживается в хранилище */
+    var base = midnightToday().getTime();
+    var u = rndT(), i;
+    span = SPANS[SPANS.length - 1];
+    for(i = 0; i < SPANS.length; i++){ if(u < SPANS[i].c){ span = SPANS[i]; break; } }
+    daysLeft = Math.round(span.a + rndT() * (span.b - span.a));
+    death = new Date(base + daysLeft * 86400000);
 
-  /* месяц и день внутри года смерти */
-  var year = birth.getFullYear() + age;
-  var month = Math.floor(rnd() * 12);
-  var daysInMonth = new Date(year, month + 1, 0).getDate();
-  var day = 1 + Math.floor(rnd() * daysInMonth);
+    /* точное время — с перекосом в «ведьмин час» */
+    var tr = rndT(), hour;
+    if(tr < 0.34)      hour = 3 + Math.floor(rndT() * 3);   /* 03:00–05:59 */
+    else if(tr < 0.55) hour = Math.floor(rndT() * 6);       /* 00:00–05:59 */
+    else               hour = Math.floor(rndT() * 24);
+    death.setHours(hour, Math.floor(rndT() * 60), Math.floor(rndT() * 60), 0);
+  }
 
-  /* время — с перекосом в «ведьмин час» */
-  var tr = rnd(), hour, minute = Math.floor(rnd() * 60);
-  if(tr < 0.34)      hour = 3 + Math.floor(rnd() * 3);      /* 03:00–05:59 */
-  else if(tr < 0.55) hour = Math.floor(rnd() * 6);          /* 00:00–05:59 */
-  else               hour = Math.floor(rnd() * 24);
-
-  var death = new Date(year, month, day, hour, minute, Math.floor(rnd() * 60));
-
-  /* если дата в прошлом — отодвигаем ровно на цикл, но сохраняем «мертвеца» отдельным кейсом */
-  var now = new Date();
-  var isPast = death.getTime() <= now.getTime();
+  var ageYears = Math.floor((death - birth) / (365.2425 * 86400000));
+  var isPast = death.getTime() <= Date.now();
 
   /* причина */
   var causeIdx = Math.floor(rnd() * CAUSES.length);
   if(rnd() < 0.03) causeIdx = CAUSES.length - 5; /* Ожин — редкий */
-  var cause = CAUSES[causeIdx];
 
   /* процентиль: сколько людей умрёт раньше */
   var percentile = 5 + Math.floor(rnd() * 90);
 
   /* особые отметки */
   var wCount = 2 + Math.floor(rnd() * 2);
-  var pool = [], i;
-  for(i = 0; i < WARNINGS.length; i++) pool.push(i);
-  var warnings = [];
-  for(i = 0; i < wCount && pool.length; i++){
+  var pool = [], w, warnings = [];
+  for(w = 0; w < WARNINGS.length; w++) pool.push(w);
+  for(w = 0; w < wCount && pool.length; w++){
     var pick = pool.splice(Math.floor(rnd() * pool.length), 1)[0];
-    var txt = WARNINGS[pick]
+    warnings.push(WARNINGS[pick]
       .replace(/%Y/g, String(death.getFullYear() - Math.floor(rnd() * 8)))
       .replace(/%M/g, MONTHS_NOM[Math.floor(rnd() * 12)])
-      .replace(/%D/g, String(1 + Math.floor(rnd() * 28)));
-    warnings.push(txt);
+      .replace(/%D/g, String(1 + Math.floor(rnd() * 28))));
   }
 
-  /* «аномалия» — длинная жизнь или слишком короткая */
+  /* отметка Реестра о сроке */
   var anomaly = null;
-  if(age >= 110) anomaly = 'АНОМАЛИЯ: срок превышает расчётный максимум. Реестр не объясняет.';
-  else if(age < 40) anomaly = 'ОТМЕТКА: обрыв раньше статистической нормы. Детали закрыты.';
+  if(daysLeft <= 7)        anomaly = 'КРИТИЧЕСКИЙ СРОК: обрыв в течение недели. Реестр рекомендует завершить дела.';
+  else if(daysLeft <= 31)  anomaly = 'ОТМЕТКА: обрыв в течение месяца. Детали закрыты.';
+  else if(daysLeft >= 27394) anomaly = 'АНОМАЛИЯ: срок превышает расчётный максимум. Реестр не объясняет.';
 
   return {
-    name: name.trim(),
+    identity: identity,
+    code: subjectCode(identity),
+    bound: !!(tgUser && tgUser.id),
+    handle: tgHandle(),
+    name: (name || '').trim(),
     birth: birth,
     birthISO: birthISO,
     death: death,
-    age: age,
+    deathISO: death.toISOString(),
+    daysLeft: daysLeft,
+    spanLabel: span.label,
+    age: ageYears,
     isPast: isPast,
-    cause: cause,
+    cause: CAUSES[causeIdx],
     percentile: percentile,
     warnings: warnings,
-    anomaly: anomaly,
-    key: key
+    anomaly: anomaly
   };
 }
 
+function midnightToday(){
+  var d = new Date(); d.setHours(0, 0, 0, 0); return d;
+}
+function spanOf(days){
+  var i;
+  for(i = 0; i < SPANS.length; i++){ if(days <= SPANS[i].b) return SPANS[i]; }
+  return SPANS[SPANS.length - 1];
+}
 function parseISO(s){
   var p = s.split('-');
   return new Date(+p[0], +p[1] - 1, +p[2], 0, 0, 0, 0);
 }
 
 /* ═══════════ STATE ═══════════ */
-var LS_KEY = 'ttd_verdict_v2';
+var LS_KEY = 'ttd_registry_v3';
 var current = null, timerId = null, heartId = null;
 
+/*
+  Хранилище keyed by идентификатор субъекта: один аккаунт — одна запись,
+  дата замораживается навсегда и больше не зависит от того, когда её открыли.
+*/
+function registry(){
+  try{ return JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; }
+  catch(e){ return {}; }
+}
 function saveVerdict(v){
   try{
-    localStorage.setItem(LS_KEY, JSON.stringify({ name:v.name, birthISO:v.birthISO }));
+    var r = registry();
+    r[v.identity] = { deathISO:v.deathISO, name:v.name, birthISO:v.birthISO, at:Date.now() };
+    localStorage.setItem(LS_KEY, JSON.stringify(r));
   }catch(e){}
 }
-function loadSaved(){
-  try{
-    var raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : null;
-  }catch(e){ return null; }
+function loadSaved(name, birthISO){
+  var id = subjectIdentity(name, birthISO);
+  var rec = registry()[id];
+  return rec && rec.deathISO ? rec : null;
 }
-function clearSaved(){ try{ localStorage.removeItem(LS_KEY); }catch(e){} }
+function clearSaved(name, birthISO){
+  try{
+    var r = registry();
+    delete r[subjectIdentity(name, birthISO)];
+    localStorage.setItem(LS_KEY, JSON.stringify(r));
+  }catch(e){}
+}
+function anySaved(){
+  var r = registry(), k;
+  for(k in r){ if(r.hasOwnProperty(k)) return r[k]; }
+  return null;
+}
 
 /* ═══════════ FLASH + SCARE ═══════════ */
 function flash(){
@@ -1033,19 +1137,45 @@ function boot(){
   requestAnimationFrame(frame);
 }
 
+function esc(s){
+  return String(s).replace(/[&<>"]/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c];
+  });
+}
+
+function renderBadge(){
+  var el = $('#acct'), txt = $('#acctTxt');
+  if(tgUser && tgUser.id){
+    el.classList.remove('off');
+    txt.innerHTML = 'АККАУНТ <b>' + esc(tgHandle()) + '</b> · ID <b>' + tgUser.id + '</b>';
+  }else{
+    el.classList.add('off');
+    txt.innerHTML = 'АККАУНТ TELEGRAM НЕ ОБНАРУЖЕН · ЛОКАЛЬНЫЙ РЕЖИМ';
+  }
+}
+
 function enterForm(){
   show('#form');
-  var saved = loadSaved();
+  renderBadge();
+
+  var nameEl = $('#i-name'), bEl = $('#i-birth');
+  if(!nameEl.value && tgUser && tgUser.first_name) nameEl.value = tgUser.first_name;
+
+  var saved = anySaved();
   if(saved){
-    $('#i-name').value = saved.name || '';
-    $('#i-birth').value = saved.birthISO || '';
+    if(!nameEl.value && saved.name) nameEl.value = saved.name;
+    if(!bEl.value && saved.birthISO) bEl.value = saved.birthISO;
     $('#savedHint').style.display = 'block';
-  }else if(tgUser && tgUser.first_name && !$('#i-name').value){
-    $('#i-name').value = tgUser.first_name;
+    var d = new Date(saved.deathISO);
+    $('#savedDeath').textContent = isNaN(d.getTime()) ? '—' : dateRu(d).toUpperCase();
+    $('#savedDeath').style.color = d.getTime() <= Date.now() ? '#8a8a8a' : '';
+  }else{
+    $('#savedHint').style.display = 'none';
   }
+
   /* ограничение максимума даты рождения — сегодня */
   var t = new Date();
-  $('#i-birth').max = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
+  bEl.max = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
   revealUp($('#form'));
 }
 
@@ -1106,7 +1236,7 @@ var SCAN_LOGS = [
 ];
 var scanTimer = null;
 
-function startScan(name, birthISO, skipStore){
+function startScan(name, birthISO){
   show('#scan');
   audioResume();
   droneStart();
@@ -1118,7 +1248,9 @@ function startScan(name, birthISO, skipStore){
   ringEl.textContent = '0%';
   stageEl.textContent = SCAN_STAGES[0].t;
 
-  var v = computeVerdict(name, birthISO);
+  /* если этому аккаунту уже выдан срок — берём замороженную дату, а не новую */
+  var saved = loadSaved(name, birthISO);
+  var v = computeVerdict(name, birthISO, saved ? saved.deathISO : null);
 
   var prog = 0, logIdx = 0, stageIdx = 0, scared = false, done = false;
   var dur = 8200;
@@ -1186,11 +1318,19 @@ function startScan(name, birthISO, skipStore){
 
 function finishScan(v){
   clearInterval(window.__hb);
-  if(!v.isPast) saveVerdict(v);
+  saveVerdict(v);
+
   if(v.isPast){
+    current = v;
+    droneStop();
     haptic('notify', 'error');
     knell();
-    $('#deadCode').textContent = 'ERR 0x' + (Math.abs(Math.round(v.death.getTime() / 86400000)) % 65535).toString(16).toUpperCase().padStart(4, '0') + ' · SUBJECT NOT FOUND';
+    $('#deadWhen').textContent = ' ' + dateRu(v.death) + ' в ' + pad(v.death.getHours()) + ':' + pad(v.death.getMinutes());
+    $('#deadCode').textContent = 'ERR 0x' +
+      (Math.abs(v.code * 7 + 13) % 65535).toString(16).toUpperCase().padStart(4, '0') +
+      ' · SUBJECT OFFLINE';
+    $('#deadNote').textContent = '';
+    $('#deadBack').textContent = v.bound ? 'Обжаловать вердикт' : 'Ввести другие данные';
     show('#dead');
     return;
   }
@@ -1208,14 +1348,18 @@ function finishScan(v){
 function renderVerdict(v){
   var d = v.death;
   $('#vName').textContent = v.name.toUpperCase();
+  $('#vId').innerHTML = v.bound
+    ? 'АККАУНТ <b>' + esc(v.handle || '') + '</b> · ID СУБЪЕКТА <b>' + v.code + '</b>'
+    : 'ЛОКАЛЬНЫЙ РЕЖИМ · ID СУБЪЕКТА <b>' + v.code + '</b>';
   $('#vDate').textContent = dateRu(d).toUpperCase();
 
   var soon = (d.getTime() - Date.now()) < 30 * 86400000;
   $('#vDate').classList.toggle('doom', soon);
 
-  $('#vTime').innerHTML = pad(d.getHours()) + ':' + pad(d.getMinutes()) +
-    ' &nbsp;·&nbsp; <b>' + WD[d.getDay()] + '</b> &nbsp;·&nbsp; возраст <b>' + v.age + '</b> ' +
-    plural(v.age, 'год', 'года', 'лет');
+  $('#vTime').innerHTML = '<b style="color:var(--red-soft)">СРОК: ' + v.spanLabel + '</b>' +
+    ' &nbsp;·&nbsp; ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) +
+    ' &nbsp;·&nbsp; <b>' + WD[d.getDay()] + '</b> &nbsp;·&nbsp; возраст <b>' + Math.max(0, v.age) + '</b> ' +
+    plural(Math.max(0, v.age), 'год', 'года', 'лет');
 
   $('#vCause').textContent = v.cause;
 
@@ -1231,8 +1375,17 @@ function renderVerdict(v){
   }, 260);
 
   /* статистика */
-  var daysLeft = Math.max(0, (d - Date.now()) / 86400000);
-  var years = d.getFullYear() - new Date().getFullYear();
+  var now = new Date();
+  var daysLeft = Math.max(0, (d - now) / 86400000);
+
+  /* сколько ещё дней рождения реально будет */
+  var bd = 0, y;
+  for(y = now.getFullYear(); y <= d.getFullYear(); y++){
+    var dim = new Date(y, v.birth.getMonth() + 1, 0).getDate();
+    var thisBd = new Date(y, v.birth.getMonth(), Math.min(v.birth.getDate(), dim));
+    if(thisBd > now && thisBd <= d) bd++;
+  }
+
   var stats = [
     { b: fmtBig(daysLeft), w: plural(Math.round(daysLeft), 'день', 'дня', 'дней'), s:'всего осталось' },
     { b: fmtBig(daysLeft * 24), w:'ч', s:'часов до обрыва' },
@@ -1240,7 +1393,7 @@ function renderVerdict(v){
     { b: fmtBig(daysLeft * 24 * 60 * 16), w:'', s:'вдохов осталось' },
     { b: fmtBig(Math.round(daysLeft)), w:'', s:'раз ты ещё уснёшь' },
     { b: fmtBig(Math.round(daysLeft / 7)), w:'', s:'понедельников впереди' },
-    { b: String(Math.max(0, years)), w:'', s:'дней рождения ещё будет' },
+    { b: String(bd), w:'', s: bd === 0 ? 'дней рождения больше не будет' : 'дней рождения ещё будет' },
     { b: fmtBig(daysLeft / 29.53), w:'', s:'полнолуний ты ещё увидишь' },
     { b: fmtBig(daysLeft * 3), w:'', s:'раз поешь. примерно' },
     { b: v.anomaly ? '!' : fmtBig(daysLeft * 1440), w:'', s: v.anomaly ? 'обнаружена аномалия' : 'минут — и ни одной лишней' }
@@ -1395,40 +1548,48 @@ $('#eulaGo').addEventListener('click', function(){
   closeEula();
   blip(300, 0.07);
   haptic('impact', 'medium');
-  startScan(pending.name, pending.iso, false);
+  startScan(pending.name, pending.iso);
 });
 
 $('#reopen').addEventListener('click', function(){
   audioResume();
   var r = validate();
   if(!r) return;
-  startScan(r.name, r.iso, true);
+  startScan(r.name, r.iso);
 });
 
-$('#resetBtn').addEventListener('click', function(){
-  stopCountdown();
-  clearSaved();
-  current = null; shownDays = -1;
-  $('#lifeFill').style.width = '0%';
-  $('#pctlFill').style.width = '0%';
-  $('#savedHint').style.display = 'none';
-  enterForm();
-});
-$('#againBtn').addEventListener('click', function(){
+/*
+  Вердикт привязан к аккаунту, поэтому «ДАННЫЕ» и «К анкете» не стирают
+  запись Реестра — они просто возвращают к форме. Полная очистка доступна
+  только в локальном режиме (вне Telegram).
+*/
+function backToForm(){
   stopCountdown();
   $('#lifeFill').style.width = '0%';
   $('#pctlFill').style.width = '0%';
   enterForm();
-});
+}
+$('#resetBtn').addEventListener('click', backToForm);
+$('#againBtn').addEventListener('click', backToForm);
+
 $('#hideBtn').addEventListener('click', function(){
-  stopCountdown();
-  show('#form');
-  $('#savedHint').style.display = 'block';
-  var saved = loadSaved();
-  if(saved){ $('#i-name').value = saved.name; $('#i-birth').value = saved.birthISO; }
+  if(!current) return backToForm();
+  blip(420, 0.05);
+  haptic('impact', 'light');
+  startScan(current.name, current.birthISO);
 });
+
 $('#deadBack').addEventListener('click', function(){
-  clearSaved();
+  if(current && current.bound){
+    /* аккаунт привязан — обжалованию не подлежит */
+    $('#deadNote').textContent = 'ОТКАЗАНО. ВЕРДИКТ ОБЖАЛОВАНИЮ НЕ ПОДЛЕЖИТ.';
+    blip(150, 0.08);
+    haptic('notify', 'error');
+    flash();
+    return;
+  }
+  try{ localStorage.removeItem(LS_KEY); }catch(e){}
+  current = null;
   enterForm();
 });
 $('#sndBtn').addEventListener('click', function(){
