@@ -155,6 +155,7 @@ button{background:none;border:0;cursor:pointer}
 .field input[type=date]{color-scheme:dark}
 .field .note{margin-top:6px;font-size:10px;color:#3f3f3f;letter-spacing:.05em}
 .field.err input{border-color:var(--red);animation:shake .3s}
+.field.err .dp-trigger{border-color:var(--red);animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 
 .btn{
@@ -179,6 +180,72 @@ button{background:none;border:0;cursor:pointer}
 .btn.ghost::after{display:none}
 .btn.ghost:active{color:var(--text);border-color:#333}
 .btnrow{display:flex;gap:9px;margin-top:12px}
+
+/* ───────── CUSTOM DATE PICKER ───────── */
+.dp-trigger{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--panel);border:1px solid var(--line);border-radius:3px;
+  padding:15px 13px;font-size:16px;letter-spacing:.14em;color:var(--text);
+  transition:border-color .2s,box-shadow .2s;text-align:left;
+}
+.dp-trigger:active{transform:scale(.99)}
+.dp-trigger .dp-val{font-family:var(--disp);font-weight:500;font-size:17px;letter-spacing:.16em}
+.dp-trigger.empty .dp-val{color:#3d3d3d;font-family:var(--mono);font-size:12px;letter-spacing:.3em}
+.dp-trigger.set{border-color:rgba(255,30,45,.4);box-shadow:0 0 20px rgba(255,30,45,.1),inset 0 0 24px rgba(92,0,9,.12)}
+.dp-trigger.set .dp-val{color:#fff;text-shadow:0 0 16px rgba(255,30,45,.4)}
+.dp-caret{color:var(--red);font-size:10px;transition:transform .2s}
+.dp-trigger.set .dp-caret{color:var(--red-soft)}
+
+#dpick{
+  position:fixed;inset:0;z-index:820;background:rgba(0,0,0,.93);
+  display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);
+}
+#dpick.on{display:flex}
+.dp-card{
+  position:relative;width:100%;max-width:520px;background:#070707;
+  border:1px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0;
+  animation:slideUp .32s cubic-bezier(.2,.8,.2,1) both;overflow:hidden;
+}
+.dp-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 16px 10px;border-bottom:1px solid var(--line);
+  font-size:9.5px;letter-spacing:.32em;color:var(--dim);
+}
+.dp-head .eula-x{position:static;padding:2px 4px}
+.dp-read{
+  text-align:center;font-family:var(--disp);font-weight:700;
+  font-size:clamp(26px,7.4vw,34px);letter-spacing:.1em;color:#fff;
+  padding:18px 10px 8px;text-shadow:0 0 26px rgba(255,30,45,.4);
+  white-space:nowrap;
+}
+.dp-read i{font-style:normal;color:var(--red)}
+.dp-wheels{
+  position:relative;display:flex;gap:2px;height:210px;margin:8px 14px 2px;
+  border:1px solid #181818;border-radius:4px;
+  background:linear-gradient(180deg,rgba(255,30,45,.045),rgba(255,30,45,.015));
+}
+.dp-col{
+  flex:1;overflow-y:auto;scroll-snap-type:y mandatory;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior:contain;
+}
+.dp-col::-webkit-scrollbar{display:none}
+.dp-item{
+  height:42px;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:#3f3f3f;letter-spacing:.06em;transition:color .12s,font-size .12s;
+}
+.dp-item.sel{color:#fff;font-size:19px;text-shadow:0 0 16px rgba(255,30,45,.55)}
+.dp-item.mut{color:#242424}
+.dp-pad{height:84px;scroll-snap-align:none}
+.dp-cursor{
+  position:absolute;left:6px;right:6px;top:50%;height:42px;transform:translateY(-50%);
+  border-top:1px solid rgba(255,30,45,.55);border-bottom:1px solid rgba(255,30,45,.55);
+  background:rgba(255,30,45,.055);border-radius:2px;pointer-events:none;
+  box-shadow:inset 0 0 26px rgba(255,30,45,.1);
+}
+.dp-fade-t,.dp-fade-b{position:absolute;left:0;right:0;height:74px;pointer-events:none}
+.dp-fade-t{top:0;background:linear-gradient(#070707,rgba(7,7,7,0))}
+.dp-fade-b{bottom:0;background:linear-gradient(rgba(7,7,7,0),#070707)}
+.dp-foot{padding:12px 14px calc(14px + env(safe-area-inset-bottom))}
 
 .warn-box{
   margin-top:18px;border:1px solid #1e1213;background:rgba(92,0,9,.14);
@@ -472,8 +539,11 @@ button{background:none;border:0;cursor:pointer}
     </div>
 
     <div class="field" id="f-birth">
-      <label for="i-birth">Дата рождения</label>
-      <input id="i-birth" type="date" min="1900-01-01"/>
+      <label for="dpTrigger">Дата рождения</label>
+      <button class="dp-trigger empty" id="dpTrigger" type="button">
+        <span class="dp-val" id="dpVal">НЕ УКАЗАНА</span>
+        <span class="dp-caret">▾</span>
+      </button>
       <div class="note">Точка отсчёта. Нужна, чтобы понять, сколько ты уже прожил.</div>
     </div>
 
@@ -562,8 +632,7 @@ button{background:none;border:0;cursor:pointer}
 
     <div class="disclaimer fade-up">
       Данные получены из Реестра судеб и не подлежат обжалованию.<br/>
-      <b>Приложение вымышленное. Никакой реальной даты не существует.</b><br/>
-      Но телефон на переходе всё равно убери.
+      Реестр не ошибается. Реестр не объясняет.
     </div>
 
     <div class="btnrow fade-up">
@@ -612,6 +681,28 @@ button{background:none;border:0;cursor:pointer}
         является окончательным и не может быть отозван.</span>
       </label>
       <button class="btn" id="eulaGo" disabled>Принять и продолжить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DATE PICKER ══ -->
+<div id="dpick">
+  <div class="dp-card">
+    <div class="dp-head">
+      <span>ТОЧКА ОТСЧЁТА</span>
+      <button class="eula-x" id="dpX" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="dp-read" id="dpRead">—</div>
+    <div class="dp-wheels">
+      <div class="dp-col" id="dpDay"></div>
+      <div class="dp-col" id="dpMonth"></div>
+      <div class="dp-col" id="dpYear"></div>
+      <div class="dp-cursor"></div>
+      <div class="dp-fade-t"></div>
+      <div class="dp-fade-b"></div>
+    </div>
+    <div class="dp-foot">
+      <button class="btn" id="dpOk">Подтвердить</button>
     </div>
   </div>
 </div>
@@ -777,7 +868,7 @@ var EULA = [
   'Данные Субъекта передаются в Реестр судеб и не возвращаются.',
   'Соглашение действует до момента, указанного в результате. Ни секундой дольше.',
   'Субъект признаёт, что он уже почти всё равно нажмёт кнопку.',
-  'Всё вышеперечисленное вымышлено. Совпадения случайны. Живи долго.'
+  'Реестр не несёт ответственности за совпадения. Совпадений не бывает.'
 ];
 
 /* ═══════════ AUDIO ═══════════ */
@@ -1077,13 +1168,6 @@ function loadSaved(name, birthISO){
   var rec = registry()[id];
   return rec && rec.deathISO ? rec : null;
 }
-function clearSaved(name, birthISO){
-  try{
-    var r = registry();
-    delete r[subjectIdentity(name, birthISO)];
-    localStorage.setItem(LS_KEY, JSON.stringify(r));
-  }catch(e){}
-}
 function anySaved(){
   var r = registry(), k;
   for(k in r){ if(r.hasOwnProperty(k)) return r[k]; }
@@ -1158,13 +1242,13 @@ function enterForm(){
   show('#form');
   renderBadge();
 
-  var nameEl = $('#i-name'), bEl = $('#i-birth');
+  var nameEl = $('#i-name');
   if(!nameEl.value && tgUser && tgUser.first_name) nameEl.value = tgUser.first_name;
 
   var saved = anySaved();
   if(saved){
     if(!nameEl.value && saved.name) nameEl.value = saved.name;
-    if(!bEl.value && saved.birthISO) bEl.value = saved.birthISO;
+    if(!birthValue && saved.birthISO) setBirth(saved.birthISO);
     $('#savedHint').style.display = 'block';
     var d = new Date(saved.deathISO);
     $('#savedDeath').textContent = isNaN(d.getTime()) ? '—' : dateRu(d).toUpperCase();
@@ -1172,10 +1256,6 @@ function enterForm(){
   }else{
     $('#savedHint').style.display = 'none';
   }
-
-  /* ограничение максимума даты рождения — сегодня */
-  var t = new Date();
-  bEl.max = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
   revealUp($('#form'));
 }
 
@@ -1507,11 +1587,104 @@ function animateDays(n){
   }
 }
 
+/* ═══════════ CUSTOM DATE PICKER ═══════════ */
+var DP_H = 42;
+var YEAR_MIN = 1900;
+var birthValue = null;                 /* ISO 'YYYY-MM-DD' */
+var dpS = { d:15, m:5, y:1992 };       /* 1-based день, 0-based месяц, год */
+var dpDay = null, dpMonth = null, dpYear = null, dpRaf = null;
+
+function dpDaysIn(m, y){ return new Date(y, m + 1, 0).getDate(); }
+function dpFill(el, count, fmt){
+  el.innerHTML = '';
+  var t = document.createElement('div'); t.className = 'dp-pad'; el.appendChild(t);
+  for(var i = 0; i < count; i++){
+    var d = document.createElement('div');
+    d.className = 'dp-item'; d.textContent = fmt(i);
+    el.appendChild(d);
+  }
+  var b = document.createElement('div'); b.className = 'dp-pad'; el.appendChild(b);
+}
+function dpIdx(el){ return Math.max(0, Math.round(el.scrollTop / DP_H)); }
+function dpGo(el, i){ el.scrollTop = i * DP_H; }
+function dpMark(el, i){
+  var kids = el.children, n;
+  for(n = 1; n < kids.length - 1; n++) kids[n].classList.toggle('sel', (n - 1) === i);
+}
+function dpRead(){
+  $('#dpRead').innerHTML = '<i>' + pad(dpS.d) + '</i>&#8201;·&#8201;' +
+    MONTHS[dpS.m].toUpperCase() + '&#8201;·&#8201;<i>' + dpS.y + '</i>';
+}
+function dpSync(fromScroll){
+  var cur = new Date();
+  var mi = Math.min(11, dpIdx(dpMonth));
+  var yi = Math.min(cur.getFullYear(), YEAR_MIN + dpIdx(dpYear));
+  var maxD = dpDaysIn(mi, yi);
+  var di = Math.min(maxD - 1, dpIdx(dpDay));
+
+  if(mi !== dpS.m || yi !== dpS.y){
+    dpS.m = mi; dpS.y = yi;
+    dpFill(dpDay, maxD, function(i){ return pad(i + 1); });
+    di = Math.min(maxD - 1, Math.max(0, dpS.d - 1));
+  }
+  dpS.d = di + 1;
+
+  dpMark(dpDay, di); dpMark(dpMonth, mi); dpMark(dpYear, yi - YEAR_MIN);
+  dpRead();
+
+  if(fromScroll && di + 1 !== dpIdx(dpDay) + 1){ dpGo(dpDay, di); }
+}
+function dpOnScroll(){
+  if(dpRaf) return;
+  dpRaf = requestAnimationFrame(function(){ dpRaf = null; dpSync(true); });
+}
+function openDatePicker(){
+  dpDay = $('#dpDay'); dpMonth = $('#dpMonth'); dpYear = $('#dpYear');
+  var cur = new Date();
+  dpFill(dpDay, dpDaysIn(dpS.m, dpS.y), function(i){ return pad(i + 1); });
+  dpFill(dpMonth, 12, function(i){ return MONTHS[i].toUpperCase(); });
+  dpFill(dpYear, cur.getFullYear() - YEAR_MIN + 1, function(i){ return String(YEAR_MIN + i); });
+  $('#dpick').classList.add('on');
+  /* ставим барабаны на текущий выбор после того, как лист отрендерится */
+  requestAnimationFrame(function(){
+    dpGo(dpDay, dpS.d - 1); dpGo(dpMonth, dpS.m); dpGo(dpYear, dpS.y - YEAR_MIN);
+    dpSync(false);
+    /* страховка: iOS может дёрнуть scrollTop при первом layout */
+    setTimeout(function(){
+      dpGo(dpDay, dpS.d - 1); dpGo(dpMonth, dpS.m); dpGo(dpYear, dpS.y - YEAR_MIN);
+      dpSync(false);
+    }, 60);
+  });
+}
+function closeDatePicker(){ $('#dpick').classList.remove('on'); }
+function setBirth(iso){
+  birthValue = iso;
+  var p = parseISO(iso);
+  dpS = { d:p.getDate(), m:p.getMonth(), y:p.getFullYear() };
+  var tr = $('#dpTrigger');
+  tr.classList.add('set'); tr.classList.remove('empty');
+  $('#dpVal').textContent = pad(p.getDate()) + ' ' + MONTHS[p.getMonth()].toUpperCase() + ' ' + p.getFullYear();
+}
+
+$('#dpTrigger').addEventListener('click', function(){ audioResume(); openDatePicker(); });
+$('#dpX').addEventListener('click', closeDatePicker);
+$('#dpick').addEventListener('click', function(e){ if(e.target === this) closeDatePicker(); });
+$('#dpDay').addEventListener('scroll', dpOnScroll);
+$('#dpMonth').addEventListener('scroll', dpOnScroll);
+$('#dpYear').addEventListener('scroll', dpOnScroll);
+$('#dpOk').addEventListener('click', function(){
+  dpSync(false);
+  setBirth(dpS.y + '-' + pad(dpS.m + 1) + '-' + pad(dpS.d));
+  closeDatePicker();
+  blip(760, 0.05);
+  haptic('impact', 'medium');
+  $('#f-birth').classList.remove('err');
+});
+
 /* ═══════════ FORM LOGIC ═══════════ */
 function validate(){
-  var nameEl = $('#i-name'), bEl = $('#i-birth');
-  var name = nameEl.value.trim();
-  var iso = bEl.value;
+  var name = $('#i-name').value.trim();
+  var iso = birthValue;
   var ok = true;
   $('#f-name').classList.remove('err');
   $('#f-birth').classList.remove('err');
