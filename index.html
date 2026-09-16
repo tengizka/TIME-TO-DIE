@@ -24,6 +24,10 @@
   --dimmer:#3d3d3d;
   --mono:'Share Tech Mono',ui-monospace,'Courier New',monospace;
   --disp:'Oswald','Arial Narrow',sans-serif;
+  /* safe-area, прилетающие от Telegram (safeAreaInset) */
+  --sa-top:0px;--sa-bottom:0px;--sa-left:0px;--sa-right:0px;
+  --sat:max(env(safe-area-inset-top,0px),var(--sa-top));
+  --sab:max(env(safe-area-inset-bottom,0px),var(--sa-bottom));
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{
@@ -161,7 +165,7 @@ button{background:none;border:0;cursor:pointer}
 .wrap{
   position:relative;z-index:10;
   max-width:520px;margin:0 auto;height:100%;
-  padding:0 16px;
+  padding:var(--sat) calc(16px + var(--sa-right)) 0 calc(16px + var(--sa-left));
   display:flex;flex-direction:column;overflow:hidden;
 }
 .screen{
@@ -169,7 +173,7 @@ button{background:none;border:0;cursor:pointer}
   overflow-y:auto;overflow-x:hidden;
   overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
   scrollbar-width:none;
-  padding-bottom:calc(24px + env(safe-area-inset-bottom));
+  padding-bottom:calc(24px + var(--sab));
   animation:fadeIn .45s ease both;
 }
 .screen::-webkit-scrollbar{display:none}
@@ -327,7 +331,19 @@ button{background:none;border:0;cursor:pointer}
 .dp-fade-t,.dp-fade-b{position:absolute;left:0;right:0;height:74px;pointer-events:none}
 .dp-fade-t{top:0;background:linear-gradient(#070707,rgba(7,7,7,0))}
 .dp-fade-b{bottom:0;background:linear-gradient(rgba(7,7,7,0),#070707)}
-.dp-foot{padding:12px 14px calc(14px + env(safe-area-inset-bottom))}
+.dp-foot{padding:12px 14px calc(14px + var(--sab))}
+
+/* переключатель полноэкранного режима Telegram */
+#fsBtn{
+  position:fixed;z-index:70;
+  top:calc(var(--sat) + 8px);right:calc(var(--sa-right) + 10px);
+  width:30px;height:30px;border:1px solid var(--line);border-radius:5px;
+  background:rgba(8,8,8,.72);color:#565656;font-size:12px;line-height:1;
+  display:none;align-items:center;justify-content:center;
+  backdrop-filter:blur(3px);
+}
+#fsBtn.show{display:flex}
+#fsBtn:active{color:var(--red);border-color:var(--red-soft)}
 
 .warn-box{
   margin-top:18px;border:1px solid #1e1213;background:rgba(92,0,9,.14);
@@ -365,7 +381,7 @@ button{background:none;border:0;cursor:pointer}
 .eula-body p{margin-bottom:11px}
 .eula-body p span{color:#3a3a3a;margin-right:7px}
 .eula-body p.hi{color:#a06a6c}
-.eula-f{padding:14px 16px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+.eula-f{padding:14px 16px calc(14px + var(--sab));border-top:1px solid var(--line)}
 .chk{display:flex;align-items:flex-start;gap:10px;margin-bottom:13px;cursor:pointer;font-size:11px;color:#9a9a9a;line-height:1.5}
 .chk input{display:none}
 .chk .box{
@@ -641,6 +657,7 @@ button{background:none;border:0;cursor:pointer}
   </div>
 </div>
 <div id="subface"><svg viewBox="0 0 200 260"><use href="#faceShape"/></svg></div>
+<button id="fsBtn" aria-label="Полноэкранный режим">⛶</button>
 
 <!-- SPLASH -->
 <div id="splash">
@@ -841,6 +858,50 @@ button{background:none;border:0;cursor:pointer}
 /* ═══════════ TELEGRAM ═══════════ */
 var tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
 var tgUser = null;
+var fsTried = false;
+
+/*
+  FULL SIZE. Bot API 8.0: requestFullscreen переводит Mini App в полноценный
+  полноэкранный режим (без шапки Telegram), в портрете и ландшафте.
+  Часть клиентов требует пользовательский жест — поэтому пробуем сразу
+  и повторяем на первом касании, плюс есть ручная кнопка ⛶.
+*/
+function tgSupportsFullscreen(){
+  return !!(tg && typeof tg.requestFullscreen === 'function');
+}
+function tryFullscreen(){
+  if(!tgSupportsFullscreen() || fsTried) return;
+  fsTried = true;
+  try{ tg.requestFullscreen(); }catch(e){}
+}
+function toggleFullscreen(){
+  if(!tgSupportsFullscreen()) return;
+  try{
+    if(tg.isFullscreen){ tg.exitFullscreen(); }
+    else{ fsTried = true; tg.requestFullscreen(); }
+  }catch(e){}
+  haptic('impact', 'light');
+}
+function applySafeArea(){
+  var r = document.documentElement.style;
+  var sa = (tg && tg.safeAreaInset) || (tg && tg.contentSafeAreaInset) || null;
+  var t = 0, b = 0, l = 0, rr = 0;
+  if(sa){
+    t = sa.top || 0; b = sa.bottom || 0; l = sa.left || 0; rr = sa.right || 0;
+  }
+  r.setProperty('--sa-top', t + 'px');
+  r.setProperty('--sa-bottom', b + 'px');
+  r.setProperty('--sa-left', l + 'px');
+  r.setProperty('--sa-right', rr + 'px');
+  syncFsBtn();
+}
+function syncFsBtn(){
+  var btn = document.getElementById('fsBtn');
+  if(!btn) return;
+  var can = tgSupportsFullscreen();
+  btn.classList.toggle('show', can);
+  btn.textContent = (tg && tg.isFullscreen) ? '◱' : '⛶';
+}
 function tgInit(){
   if(!tg) return;
   try{
@@ -848,7 +909,20 @@ function tgInit(){
     if(tg.setHeaderColor) tg.setHeaderColor('#040404');
     if(tg.setBackgroundColor) tg.setBackgroundColor('#040404');
     if(tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+    if(tg.enableClosingConfirmation) tg.enableClosingConfirmation();
     tgUser = tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
+
+    applySafeArea();
+    if(tg.onEvent){
+      tg.onEvent('fullscreenChanged', applySafeArea);
+      tg.onEvent('safeAreaChanged', applySafeArea);
+      tg.onEvent('contentSafeAreaChanged', applySafeArea);
+      tg.onEvent('fullscreenFailed', function(){
+        fsTried = false;            /* разрешаем повтор по жесту / кнопке */
+        syncFsBtn();
+      });
+    }
+    tryFullscreen();
   }catch(e){}
 }
 function haptic(type, style){
@@ -2157,6 +2231,14 @@ $('.cd').addEventListener('click', function(){
 /* первый тап — разблокировать звук */
 document.addEventListener('touchstart', audioResume, { once:true });
 document.addEventListener('click', audioResume, { once:true });
+/* часть клиентов Telegram даёт фуллскрин только по жесту — повторяем попытку */
+document.addEventListener('touchstart', function(){ tryFullscreen(); }, { once:true });
+document.addEventListener('click', function(){ tryFullscreen(); }, { once:true });
+
+$('#fsBtn').addEventListener('click', function(e){
+  e.stopPropagation();
+  toggleFullscreen();
+});
 
 /* безопасность: если сплэш завис */
 setTimeout(function(){
