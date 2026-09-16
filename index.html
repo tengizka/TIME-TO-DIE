@@ -873,6 +873,8 @@ var EULA = [
 
 /* ═══════════ AUDIO ═══════════ */
 var actx = null, soundOn = true, master = null, droneNodes = null;
+var intensity = 0;          /* 0..1 — насколько «накачана» сцена; рулит громкостью */
+var riserNodes = null;
 function audioInit(){
   if(actx) return;
   var AC = window.AudioContext || window.webkitAudioContext;
@@ -912,8 +914,8 @@ function beatThump(vol){
   o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.28);
 }
 function heartOnce(){
-  beatThump(0.4);
-  setTimeout(function(){ beatThump(0.24); }, 165);
+  beatThump(0.26 + intensity * 0.34);
+  setTimeout(function(){ beatThump(0.15 + intensity * 0.22); }, 165);
 }
 function blip(freq, vol){
   if(!actx || !soundOn) return;
@@ -968,13 +970,62 @@ function droneStart(){
   var o1 = actx.createOscillator(), o2 = actx.createOscillator(), g = actx.createGain(), lfo = actx.createOscillator(), lg = actx.createGain();
   o1.type = 'sawtooth'; o1.frequency.value = 41;
   o2.type = 'sine'; o2.frequency.value = 61.5;
-  var f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 240; f.Q.value = 3;
-  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.11, t + 1.6);
-  lfo.frequency.value = 0.16; lg.gain.value = 60;
+  var f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 160; f.Q.value = 4;
+  /* стартуем тихо: дальше громкость растёт вместе с прогрессом сканирования */
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05, t + 1.4);
+  lfo.frequency.value = 0.16; lg.gain.value = 40;
   lfo.connect(lg); lg.connect(f.frequency);
   o1.connect(f); o2.connect(f); f.connect(g); g.connect(master);
   o1.start(t); o2.start(t); lfo.start(t);
-  droneNodes = { o1:o1, o2:o2, g:g, lfo:lfo };
+  droneNodes = { o1:o1, o2:o2, g:g, lfo:lfo, f:f };
+}
+/* крещендо: чем ближе к вердикту, тем жирнее дрон и тем шире фильтр */
+function droneLevel(p){
+  if(!droneNodes || !actx) return;
+  var t = actx.currentTime;
+  droneNodes.g.gain.setTargetAtTime(0.05 + p * 0.30, t, 0.25);
+  droneNodes.f.frequency.setTargetAtTime(160 + p * 1100, t, 0.3);
+  droneNodes.lfo.frequency.setTargetAtTime(0.16 + p * 0.5, t, 0.4);
+}
+/* восходящий райзер перед самым вердиктом */
+function riserStart(ms){
+  if(!actx || !soundOn || riserNodes) return;
+  var t = actx.currentTime, dur = Math.max(0.6, ms / 1000);
+  var o = actx.createOscillator(), g = actx.createGain();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(70, t);
+  o.frequency.exponentialRampToValueAtTime(760, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.16, t + dur * 0.85);
+  g.gain.linearRampToValueAtTime(0.24, t + dur);
+  var f = actx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.4;
+  f.frequency.setValueAtTime(140, t);
+  f.frequency.exponentialRampToValueAtTime(2600, t + dur);
+  var n = actx.createBufferSource(); n.buffer = noiseBuf(dur + 0.2); n.loop = true;
+  var ng = actx.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.linearRampToValueAtTime(0.12, t + dur);
+  var nf = actx.createBiquadFilter(); nf.type = 'highpass';
+  nf.frequency.setValueAtTime(300, t);
+  nf.frequency.exponentialRampToValueAtTime(4200, t + dur);
+  o.connect(f); f.connect(g); g.connect(master);
+  n.connect(nf); nf.connect(ng); ng.connect(master);
+  o.start(t); n.start(t);
+  o.stop(t + dur + 0.1); n.stop(t + dur + 0.1);
+  riserNodes = { o:o, n:n, g:g, ng:ng, until:t + dur };
+}
+function riserStop(){
+  if(!riserNodes || !actx) return;
+  var t = actx.currentTime, r = riserNodes; riserNodes = null;
+  try{
+    r.g.gain.cancelScheduledValues(t);
+    r.ng.gain.cancelScheduledValues(t);
+    r.g.gain.setValueAtTime(r.g.gain.value, t);
+    r.ng.gain.setValueAtTime(r.ng.gain.value, t);
+    r.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    r.ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    r.o.stop(t + 0.25); r.n.stop(t + 0.25);
+  }catch(e){}
 }
 function droneStop(){
   if(!droneNodes || !actx) return;
@@ -1140,6 +1191,7 @@ function spanOf(days){
   return SPANS[SPANS.length - 1];
 }
 function parseISO(s){
+  if(typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(NaN);
   var p = s.split('-');
   return new Date(+p[0], +p[1] - 1, +p[2], 0, 0, 0, 0);
 }
@@ -1281,7 +1333,7 @@ function buildEula(){
 }
 function openEula(name, birth){
   buildEula();
-  pending = { name:name, birth:birth };
+  pending = { name:name, iso:birth };
   $('#eulaAgree').checked = false;
   $('#eulaGo').disabled = true;
   $('#eula').classList.add('on');
@@ -1332,9 +1384,11 @@ function startScan(name, birthISO){
   var saved = loadSaved(name, birthISO);
   var v = computeVerdict(name, birthISO, saved ? saved.deathISO : null);
 
-  var prog = 0, logIdx = 0, stageIdx = 0, scared = false, done = false;
+  var prog = 0, logIdx = 0, stageIdx = 0, scared = false, done = false, riserOn = false;
   var dur = 8200;
   var t0 = Date.now();
+  intensity = 0;
+  riserStop();
 
   clearInterval(scanTimer);
   scanTimer = setInterval(function(){
@@ -1368,19 +1422,41 @@ function startScan(name, birthISO){
     /* скример на ~86% */
     if(!scared && prog >= 86){
       scared = true;
+      intensity = 1;
       flash();
       setTimeout(scare, 130);
       stageEl.textContent = '— — — — — —';
       haptic('notify', 'error');
     }
 
+    /* крещендо: чем ближе конец инициализации, тем громче дрон,
+       тем шире фильтр и тем чаще/сильнее сердцебиение */
+    intensity = prog / 100;
+    droneLevel(intensity);
+    if(!riserOn && prog >= 66){
+      riserOn = true;
+      riserStart(dur - el);
+    }
+
     if(prog >= 100 && !done){
       done = true;
       clearInterval(scanTimer);
       droneStop();
+      riserStop();
       setTimeout(function(){ finishScan(v); }, 620);
     }
   }, 60);
+
+  /* страховка: если что-то внутри тика упадёт, пользователь не останется
+     висеть на «ИНИЦИАЛИЗАЦИЯ» навсегда — вердикт всё равно будет вынесен */
+  setTimeout(function(){
+    if(done) return;
+    done = true;
+    clearInterval(scanTimer);
+    clearInterval(window.__hb);
+    droneStop(); riserStop();
+    finishScan(v);
+  }, dur + 5000);
 
   /* отдельный цикл сердцебиения — ускоряется вместе со сканом */
   clearInterval(window.__hb);
@@ -1398,6 +1474,8 @@ function startScan(name, birthISO){
 
 function finishScan(v){
   clearInterval(window.__hb);
+  riserStop();
+  droneStop();
   saveVerdict(v);
 
   if(v.isPast){
@@ -1567,8 +1645,9 @@ function tickCountdown(){
     $('#cdH').textContent = pad(h);
     $('#cdM').textContent = pad(m);
     $('#cdS').textContent = pad(sec);
-    /* сердце бьётся чаще, когда мало времени */
+    /* сердце бьётся чаще и громче, когда мало времени */
     var rate = days < 1 ? '0.4s' : days < 30 ? '0.7s' : '1.05s';
+    intensity = days < 1 ? 1 : days < 30 ? 0.7 : 0.35;
     var hb = $('#heart');
     if(hb.style.animationDuration !== rate) hb.style.animationDuration = rate;
   }
