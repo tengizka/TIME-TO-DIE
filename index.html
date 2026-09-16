@@ -333,18 +333,6 @@ button{background:none;border:0;cursor:pointer}
 .dp-fade-b{bottom:0;background:linear-gradient(rgba(7,7,7,0),#070707)}
 .dp-foot{padding:12px 14px calc(14px + var(--sab))}
 
-/* переключатель полноэкранного режима Telegram */
-#fsBtn{
-  position:fixed;z-index:70;
-  top:calc(var(--sat) + 8px);right:calc(var(--sa-right) + 10px);
-  width:30px;height:30px;border:1px solid var(--line);border-radius:5px;
-  background:rgba(8,8,8,.72);color:#565656;font-size:12px;line-height:1;
-  display:none;align-items:center;justify-content:center;
-  backdrop-filter:blur(3px);
-}
-#fsBtn.show{display:flex}
-#fsBtn:active{color:var(--red);border-color:var(--red-soft)}
-
 .warn-box{
   margin-top:18px;border:1px solid #1e1213;background:rgba(92,0,9,.14);
   border-radius:3px;padding:11px 12px;font-size:10.5px;line-height:1.65;color:#8a6a6c;letter-spacing:.02em;
@@ -534,13 +522,6 @@ button{background:none;border:0;cursor:pointer}
 }
 .disclaimer b{color:#5d5d5d;font-weight:400}
 
-.topbar{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:12px 2px 0;font-size:9.5px;letter-spacing:.24em;color:#3f3f3f;
-}
-.topbar button{font-size:9.5px;letter-spacing:.24em;color:#4a4a4a;padding:4px 0}
-.topbar button:active{color:var(--red)}
-
 /* ───────── DEAD SCREEN ───────── */
 #dead{justify-content:flex-start;text-align:center;padding:24px 0}
 #dead>*:first-child{margin-top:auto}
@@ -657,7 +638,6 @@ button{background:none;border:0;cursor:pointer}
   </div>
 </div>
 <div id="subface"><svg viewBox="0 0 200 260"><use href="#faceShape"/></svg></div>
-<button id="fsBtn" aria-label="Полноэкранный режим">⛶</button>
 
 <!-- SPLASH -->
 <div id="splash">
@@ -726,13 +706,6 @@ button{background:none;border:0;cursor:pointer}
 
   <!-- ══ VERDICT ══ -->
   <section class="screen" id="verdict">
-    <div class="topbar">
-      <span>TIME TO DIE</span>
-      <span style="display:flex;gap:16px">
-        <button id="sndBtn">ЗВУК: ВКЛ</button>
-      </span>
-    </div>
-
     <div class="vlabel r fade-up">ВЕРДИКТ ВЫНЕСЕН · ВОЗВРАТА НЕТ</div>
     <div class="vname fade-up" id="vName">—</div>
     <div class="vid fade-up" id="vId">—</div>
@@ -864,7 +837,8 @@ var fsTried = false;
   FULL SIZE. Bot API 8.0: requestFullscreen переводит Mini App в полноценный
   полноэкранный режим (без шапки Telegram), в портрете и ландшафте.
   Часть клиентов требует пользовательский жест — поэтому пробуем сразу
-  и повторяем на первом касании, плюс есть ручная кнопка ⛶.
+  и повторяем на первом касании. Никаких видимых кнопок-переключателей:
+  интерфейс остаётся чистым.
 */
 function tgSupportsFullscreen(){
   return !!(tg && typeof tg.requestFullscreen === 'function');
@@ -873,14 +847,6 @@ function tryFullscreen(){
   if(!tgSupportsFullscreen() || fsTried) return;
   fsTried = true;
   try{ tg.requestFullscreen(); }catch(e){}
-}
-function toggleFullscreen(){
-  if(!tgSupportsFullscreen()) return;
-  try{
-    if(tg.isFullscreen){ tg.exitFullscreen(); }
-    else{ fsTried = true; tg.requestFullscreen(); }
-  }catch(e){}
-  haptic('impact', 'light');
 }
 function applySafeArea(){
   var r = document.documentElement.style;
@@ -893,14 +859,6 @@ function applySafeArea(){
   r.setProperty('--sa-bottom', b + 'px');
   r.setProperty('--sa-left', l + 'px');
   r.setProperty('--sa-right', rr + 'px');
-  syncFsBtn();
-}
-function syncFsBtn(){
-  var btn = document.getElementById('fsBtn');
-  if(!btn) return;
-  var can = tgSupportsFullscreen();
-  btn.classList.toggle('show', can);
-  btn.textContent = (tg && tg.isFullscreen) ? '◱' : '⛶';
 }
 function tgInit(){
   if(!tg) return;
@@ -1269,11 +1227,6 @@ function ambientStart(){
   droneStart();
   droneLevel(0.22);
   scheduleMotif();
-}
-function ambientStop(){
-  ambientOn = false;
-  clearTimeout(motifTimer);
-  droneStop();
 }
 function scheduleMotif(){
   if(!ambientOn) return;
@@ -2200,15 +2153,6 @@ $('#eulaGo').addEventListener('click', function(){
   startScan(pending.name, pending.iso);
 });
 
-$('#sndBtn').addEventListener('click', function(){
-  soundOn = !soundOn;
-  this.textContent = 'ЗВУК: ' + (soundOn ? 'ВКЛ' : 'ВЫКЛ');
-  this.style.color = soundOn ? '' : '#3a3a3a';
-  if(!soundOn) ambientStop();
-  else audioResume();
-  haptic('impact', 'light');
-});
-
 /* пасхалка: 13 тапов по таймеру */
 var taps = 0, tapT = null;
 $('.cd').addEventListener('click', function(){
@@ -2234,11 +2178,6 @@ document.addEventListener('click', audioResume, { once:true });
 /* часть клиентов Telegram даёт фуллскрин только по жесту — повторяем попытку */
 document.addEventListener('touchstart', function(){ tryFullscreen(); }, { once:true });
 document.addEventListener('click', function(){ tryFullscreen(); }, { once:true });
-
-$('#fsBtn').addEventListener('click', function(e){
-  e.stopPropagation();
-  toggleFullscreen();
-});
 
 /* безопасность: если сплэш завис */
 setTimeout(function(){
