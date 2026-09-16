@@ -31,10 +31,11 @@ html,body{
   background:var(--bg);
   color:var(--text);
   font-family:var(--mono);
-  overflow-x:hidden;
+  overflow:hidden;                 /* документ не скроллится вовсе — как нативное приложение */
+  overscroll-behavior:none;
   -webkit-font-smoothing:antialiased;
 }
-body{overscroll-behavior:none}
+body{overscroll-behavior:none;position:fixed;inset:0;width:100%}
 input,button,select,textarea{font-family:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer}
 ::selection{background:var(--red);color:#000}
@@ -86,11 +87,19 @@ button{background:none;border:0;cursor:pointer}
 /* ───────── SHELL ───────── */
 .wrap{
   position:relative;z-index:10;
-  max-width:520px;margin:0 auto;min-height:100%;
-  padding:0 16px calc(28px + env(safe-area-inset-bottom));
-  display:flex;flex-direction:column;
+  max-width:520px;margin:0 auto;height:100%;
+  padding:0 16px;
+  display:flex;flex-direction:column;overflow:hidden;
 }
-.screen{display:none;flex-direction:column;flex:1;animation:fadeIn .45s ease both}
+.screen{
+  display:none;flex-direction:column;flex:1;min-height:0;
+  overflow-y:auto;overflow-x:hidden;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom));
+  animation:fadeIn .45s ease both;
+}
+.screen::-webkit-scrollbar{display:none}
 .screen.on{display:flex}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
@@ -276,7 +285,10 @@ button{background:none;border:0;cursor:pointer}
 .eula-h{padding:16px 16px 12px;border-bottom:1px solid var(--line)}
 .eula-h h2{font-family:var(--disp);font-weight:500;font-size:15px;letter-spacing:.2em;color:#fff}
 .eula-h p{font-size:10px;color:var(--dim);margin-top:5px;letter-spacing:.08em}
-.eula-body{padding:14px 16px;overflow-y:auto;font-size:11.5px;line-height:1.75;color:#8d8d8d;flex:1}
+.eula-body{
+  padding:14px 16px;overflow-y:auto;font-size:11.5px;line-height:1.75;color:#8d8d8d;flex:1;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+}
 .eula-body p{margin-bottom:11px}
 .eula-body p span{color:#3a3a3a;margin-right:7px}
 .eula-body p.hi{color:#a06a6c}
@@ -293,8 +305,8 @@ button{background:none;border:0;cursor:pointer}
 .eula-x:active{color:var(--red)}
 
 /* ───────── SCAN ───────── */
-#scan{justify-content:center;padding:20px 0}
-.scan-hud{text-align:center}
+#scan{justify-content:flex-start;padding:16px 0}
+.scan-hud{text-align:center;margin:auto 0}   /* центр когда есть место, скролл когда нет */
 .scan-ring{
   width:min(210px,54vw);height:min(210px,54vw);margin:0 auto 26px;position:relative;
 }
@@ -441,7 +453,9 @@ button{background:none;border:0;cursor:pointer}
 .topbar button:active{color:var(--red)}
 
 /* ───────── DEAD SCREEN ───────── */
-#dead{justify-content:center;text-align:center;padding:30px 0}
+#dead{justify-content:flex-start;text-align:center;padding:24px 0}
+#dead>*:first-child{margin-top:auto}
+#dead>*:last-child{margin-bottom:auto}
 #dead .static{
   height:150px;border:1px solid var(--line);border-radius:3px;overflow:hidden;position:relative;margin-bottom:26px;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
@@ -889,6 +903,8 @@ function audioInit(){
 function audioResume(){
   audioInit();
   if(actx && actx.state === 'suspended'){ try{ actx.resume(); }catch(e){} }
+  /* эмбиент стартует при первом же жесте — раньше браузеры не разрешают */
+  ambientStart();
 }
 function noiseBuf(sec){
   var len = Math.floor(actx.sampleRate * sec), b = actx.createBuffer(1, len, actx.sampleRate), d = b.getChannelData(0), i;
@@ -1037,6 +1053,91 @@ function droneStop(){
     d.o1.stop(t + 0.6); d.o2.stop(t + 0.6); d.lfo.stop(t + 0.6);
   }catch(e){}
 }
+
+/* ═══════════ МРАЧНЫЙ ЭМБИЕНТ С САМОГО НАЧАЛА ═══════════ */
+var ambientOn = false, motifTimer = null;
+function ambientStart(){
+  audioInit();
+  if(!actx || ambientOn) return;
+  ambientOn = true;
+  droneStart();
+  droneLevel(0.22);
+  scheduleMotif();
+}
+function ambientStop(){
+  ambientOn = false;
+  clearTimeout(motifTimer);
+  droneStop();
+}
+function scheduleMotif(){
+  if(!ambientOn) return;
+  motifTimer = setTimeout(function(){
+    if(ambientOn && soundOn) motif();
+    scheduleMotif();
+  }, 2400 + Math.random() * 3000);
+}
+/* низкий диссонирующий кластер + изредка далёкий колокольчик */
+function motif(){
+  if(!actx) return;
+  var t = actx.currentTime;
+  [55, 58.27].forEach(function(f, i){
+    var o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.055 - i * 0.018, t + 0.9);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 3.4);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 3.6);
+  });
+  if(Math.random() < 0.45){
+    var o2 = actx.createOscillator(), g2 = actx.createGain();
+    o2.type = 'triangle'; o2.frequency.value = 620 + Math.random() * 300;
+    g2.gain.setValueAtTime(0.0001, t + 0.5);
+    g2.gain.linearRampToValueAtTime(0.016, t + 0.62);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + 2.3);
+    o2.connect(g2); g2.connect(master); o2.start(t + 0.5); o2.stop(t + 2.5);
+  }
+}
+/* глухой удар — открытие/подтверждение чего-то важного */
+function boom(vol){
+  if(!actx || !soundOn) return;
+  var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(96, t);
+  o.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol || 0.4, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + 1);
+  var n = actx.createBufferSource(); n.buffer = noiseBuf(0.3);
+  var f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500;
+  var ng = actx.createGain();
+  ng.gain.setValueAtTime(0.14, t);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+  n.connect(f); f.connect(ng); ng.connect(master); n.start(t); n.stop(t + 0.3);
+}
+
+/* ═══════════ ОЗВУЧКА БАРАБАНА ДАТЫ ═══════════ */
+function wheelTick(which){
+  if(!actx || !soundOn) return;
+  var f = which === 'd' ? 1700 : which === 'm' ? 1250 : 900;
+  var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+  o.type = 'square'; o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.028, t + 0.003);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.05);
+}
+function wheelThud(){
+  if(!actx || !soundOn) return;
+  var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(64, t);
+  o.frequency.exponentialRampToValueAtTime(38, t + 0.22);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.22, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.45);
+}
 function tickClick(){
   if(!actx || !soundOn) return;
   var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
@@ -1051,8 +1152,9 @@ function tickClick(){
 function show(id){
   var all = document.querySelectorAll('.screen'), i;
   for(i = 0; i < all.length; i++) all[i].classList.remove('on');
-  $(id).classList.add('on');
-  window.scrollTo(0, 0);
+  var el = $(id);
+  el.classList.add('on');
+  el.scrollTop = 0;               /* скроллится только сам экран, документ неподвижен */
 }
 
 /* ═══════════ ИДЕНТИФИКАЦИЯ СУБЪЕКТА ═══════════ */
@@ -1244,6 +1346,9 @@ function scare(){
 
 /* ═══════════ BOOT SPLASH ═══════════ */
 function boot(){
+  /* контекст создаём сразу (он будет suspended до первого жеста),
+     чтобы эмбиент ударил в ту же миллисекунду, как пользователь коснётся экрана */
+  ambientStart();
   var fill = $('#sfill'), log = $('#slog');
   var lines = [
     'инициализация ядра…',
@@ -1441,7 +1546,7 @@ function startScan(name, birthISO){
     if(prog >= 100 && !done){
       done = true;
       clearInterval(scanTimer);
-      droneStop();
+      droneLevel(0.85);      /* пик накачки прямо перед вердиктом */
       riserStop();
       setTimeout(function(){ finishScan(v); }, 620);
     }
@@ -1475,7 +1580,7 @@ function startScan(name, birthISO){
 function finishScan(v){
   clearInterval(window.__hb);
   riserStop();
-  droneStop();
+  droneLevel(0.3);   /*release после пика: эмбиент остаётся, но оседает*/
   saveVerdict(v);
 
   if(v.isPast){
@@ -1672,6 +1777,11 @@ var YEAR_MIN = 1900;
 var birthValue = null;                 /* ISO 'YYYY-MM-DD' */
 var dpS = { d:15, m:5, y:1992 };       /* 1-based день, 0-based месяц, год */
 var dpDay = null, dpMonth = null, dpYear = null, dpRaf = null;
+var lastWheel = { d:-1, m:-1, y:-1 }, wheelCount = 0;
+function bump(){
+  wheelCount++;
+  if(wheelCount % 3 === 0){ wheelThud(); haptic('impact', 'soft'); }
+}
 
 function dpDaysIn(m, y){ return new Date(y, m + 1, 0).getDate(); }
 function dpFill(el, count, fmt){
@@ -1711,6 +1821,14 @@ function dpSync(fromScroll){
   dpMark(dpDay, di); dpMark(dpMonth, mi); dpMark(dpYear, yi - YEAR_MIN);
   dpRead();
 
+  /* озвучка детентов: каждый щелчок барабана слышен */
+  if(lastWheel.d !== -1){
+    if(di !== lastWheel.d){ wheelTick('d'); bump(); }
+    else if(mi !== lastWheel.m){ wheelTick('m'); bump(); }
+    else if(yi !== lastWheel.y){ wheelTick('y'); bump(); }
+  }
+  lastWheel = { d:di, m:mi, y:yi };
+
   if(fromScroll && di + 1 !== dpIdx(dpDay) + 1){ dpGo(dpDay, di); }
 }
 function dpOnScroll(){
@@ -1719,11 +1837,17 @@ function dpOnScroll(){
 }
 function openDatePicker(){
   dpDay = $('#dpDay'); dpMonth = $('#dpMonth'); dpYear = $('#dpYear');
+  lastWheel = { d:-1, m:-1, y:-1 };
+  audioResume();
+  ambientStart();
+  boom(0.34);
+  haptic('impact', 'medium');
   var cur = new Date();
   dpFill(dpDay, dpDaysIn(dpS.m, dpS.y), function(i){ return pad(i + 1); });
   dpFill(dpMonth, 12, function(i){ return MONTHS[i].toUpperCase(); });
   dpFill(dpYear, cur.getFullYear() - YEAR_MIN + 1, function(i){ return String(YEAR_MIN + i); });
   $('#dpick').classList.add('on');
+  droneLevel(0.42);   /* пока крутишь барабан — напряжение выше */
   /* ставим барабаны на текущий выбор после того, как лист отрендерится */
   requestAnimationFrame(function(){
     dpGo(dpDay, dpS.d - 1); dpGo(dpMonth, dpS.m); dpGo(dpYear, dpS.y - YEAR_MIN);
@@ -1735,7 +1859,10 @@ function openDatePicker(){
     }, 60);
   });
 }
-function closeDatePicker(){ $('#dpick').classList.remove('on'); }
+function closeDatePicker(){
+  $('#dpick').classList.remove('on');
+  droneLevel(0.25);
+}
 function setBirth(iso){
   birthValue = iso;
   var p = parseISO(iso);
@@ -1755,8 +1882,10 @@ $('#dpOk').addEventListener('click', function(){
   dpSync(false);
   setBirth(dpS.y + '-' + pad(dpS.m + 1) + '-' + pad(dpS.d));
   closeDatePicker();
-  blip(760, 0.05);
-  haptic('impact', 'medium');
+  boom(0.42);
+  blip(196, 0.05);
+  setTimeout(function(){ blip(185, 0.05); }, 150);
+  haptic('impact', 'heavy');
   $('#f-birth').classList.remove('err');
 });
 
@@ -1848,7 +1977,7 @@ $('#sndBtn').addEventListener('click', function(){
   soundOn = !soundOn;
   this.textContent = 'ЗВУК: ' + (soundOn ? 'ВКЛ' : 'ВЫКЛ');
   this.style.color = soundOn ? '' : '#3a3a3a';
-  if(!soundOn) droneStop();
+  if(!soundOn) ambientStop();
   else audioResume();
   haptic('impact', 'light');
 });
