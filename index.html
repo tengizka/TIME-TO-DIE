@@ -485,6 +485,18 @@ button{background:none;border:0;cursor:pointer}
 .acct b{color:#b0b0b0;font-weight:400}
 .acct.off .dot{background:#333;box-shadow:none;animation:none}
 .acct.off{color:#3f3f3f}
+.noret{
+  margin-top:24px;border:1px solid #221214;border-radius:3px;
+  background:linear-gradient(180deg,rgba(92,0,9,.2),rgba(10,10,10,.35));
+  padding:14px 12px;text-align:center;
+  font-family:var(--disp);font-weight:500;font-size:13px;letter-spacing:.3em;text-indent:.3em;
+  color:var(--red);text-transform:uppercase;
+  box-shadow:inset 0 0 30px rgba(92,0,9,.18);
+}
+.noret span{
+  display:block;margin-top:8px;font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.16em;text-indent:0;text-transform:none;color:#5d4a4c;
+}
 .vid{text-align:center;font-size:9.5px;letter-spacing:.26em;color:#434343;text-indent:.26em;margin-bottom:20px}
 .vid b{color:#7a7a7a;font-weight:400}
 .dead-note{margin-top:18px;font-size:11px;color:var(--red);letter-spacing:.14em;min-height:16px}
@@ -563,11 +575,6 @@ button{background:none;border:0;cursor:pointer}
 
     <button class="btn" id="go">Узнать дату смерти</button>
 
-    <div class="saved-hint" id="savedHint" style="display:none">
-      Вердикт этому аккаунту уже вынесен: <b id="savedDeath">—</b><br/>
-      <button id="reopen">Открыть его снова →</button>
-    </div>
-
     <div class="warn-box">
       <b>ВНИМАНИЕ.</b> Срок выдаётся один раз и навсегда привязывается
       к аккаунту Telegram. Он не пересматривается: смена имени, даты
@@ -596,11 +603,10 @@ button{background:none;border:0;cursor:pointer}
       <span>TIME TO DIE</span>
       <span style="display:flex;gap:16px">
         <button id="sndBtn">ЗВУК: ВКЛ</button>
-        <button id="resetBtn">АНКЕТА</button>
       </span>
     </div>
 
-    <div class="vlabel r fade-up">ВЕРДИКТ ВЫНЕСЕН</div>
+    <div class="vlabel r fade-up">ВЕРДИКТ ВЫНЕСЕН · ВОЗВРАТА НЕТ</div>
     <div class="vname fade-up" id="vName">—</div>
     <div class="vid fade-up" id="vId">—</div>
     <div class="vdate fade-up" id="vDate">—</div>
@@ -649,9 +655,9 @@ button{background:none;border:0;cursor:pointer}
       Реестр не ошибается. Реестр не объясняет.
     </div>
 
-    <div class="btnrow fade-up">
-      <button class="btn ghost" id="againBtn">К анкете</button>
-      <button class="btn ghost" id="hideBtn">Пересканировать</button>
+    <div class="noret fade-up">
+      ПУТЬ НАЗАД ЗАКРЫТ
+      <span>Реестр не пересматривает решения. Анкета уничтожена.</span>
     </div>
   </section>
 
@@ -667,11 +673,8 @@ button{background:none;border:0;cursor:pointer}
       Если ты это читаешь — значит, расчёт ошибся.<br/>
       Или читает кто-то другой.
     </p>
-    <div class="dead-note" id="deadNote"></div>
+    <div class="dead-note" id="deadNote">ОБЖАЛОВАНИЮ НЕ ПОДЛЕЖИТ</div>
     <div class="code" id="deadCode">ERR 0x00 · NO SIGNAL</div>
-    <div class="btnrow" style="margin-top:20px">
-      <button class="btn ghost" id="deadBack">Ввести другие данные</button>
-    </div>
   </section>
 
 </div>
@@ -1350,13 +1353,14 @@ function boot(){
      чтобы эмбиент ударил в ту же миллисекунду, как пользователь коснётся экрана */
   ambientStart();
   var fill = $('#sfill'), log = $('#slog');
+  var hasRec = !!recordForCurrent();
   var lines = [
     'инициализация ядра…',
     'проверка целостности реестра…',
     'подключение к архиву судеб…',
     'калибровка хронометра…',
     'поиск субъекта…',
-    'доступ разрешён'
+    hasRec ? 'вердикт найден. возврат невозможен' : 'доступ разрешён'
   ];
   var start = Date.now(), total = 2300, idx = 0;
   log.textContent = lines[0];
@@ -1371,7 +1375,7 @@ function boot(){
       log.textContent = 'готово';
       setTimeout(function(){
         $('#splash').classList.add('gone');
-        enterForm();
+        route();
       }, 420);
     }
   }
@@ -1401,19 +1405,46 @@ function enterForm(){
 
   var nameEl = $('#i-name');
   if(!nameEl.value && tgUser && tgUser.first_name) nameEl.value = tgUser.first_name;
-
-  var saved = anySaved();
-  if(saved){
-    if(!nameEl.value && saved.name) nameEl.value = saved.name;
-    if(!birthValue && saved.birthISO) setBirth(saved.birthISO);
-    $('#savedHint').style.display = 'block';
-    var d = new Date(saved.deathISO);
-    $('#savedDeath').textContent = isNaN(d.getTime()) ? '—' : dateRu(d).toUpperCase();
-    $('#savedDeath').style.color = d.getTime() <= Date.now() ? '#8a8a8a' : '';
-  }else{
-    $('#savedHint').style.display = 'none';
-  }
   revealUp($('#form'));
+}
+
+/*
+  ПУТЬ НАЗАД ЗАКРЫТ. Если у этого аккаунта уже есть запись в Реестре,
+  любой запуск приложения идёт сразу на вынесенный вердикт —
+  ни анкеты, ни сканирования, ни возврата.
+*/
+function recordForCurrent(){
+  if(tgUser && tgUser.id){
+    var r = registry()['TG#' + tgUser.id];
+    if(r && r.deathISO) return r;
+  }
+  return anySaved();
+}
+function route(){
+  var rec = recordForCurrent();
+  if(rec && rec.deathISO){ openExisting(rec); }
+  else{ enterForm(); }
+}
+function openExisting(rec){
+  var v = computeVerdict(rec.name || '', rec.birthISO || '1970-01-01', rec.deathISO);
+  current = v;
+  ambientStart();
+  if(v.isPast){
+    $('#deadWhen').textContent = ' ' + dateRu(v.death) + ' в ' + pad(v.death.getHours()) + ':' + pad(v.death.getMinutes());
+    $('#deadCode').textContent = 'ERR 0x' +
+      (Math.abs(v.code * 7 + 13) % 65535).toString(16).toUpperCase().padStart(4, '0') +
+      ' · SUBJECT OFFLINE';
+    show('#dead');
+    boom(0.4);
+    haptic('notify', 'error');
+    return;
+  }
+  renderVerdict(v);
+  show('#verdict');
+  revealUp($('#verdict'));
+  startCountdown();
+  boom(0.34);
+  haptic('notify', 'warning');
 }
 
 function revealUp(root){
@@ -1592,8 +1623,6 @@ function finishScan(v){
     $('#deadCode').textContent = 'ERR 0x' +
       (Math.abs(v.code * 7 + 13) % 65535).toString(16).toUpperCase().padStart(4, '0') +
       ' · SUBJECT OFFLINE';
-    $('#deadNote').textContent = '';
-    $('#deadBack').textContent = v.bound ? 'Обжаловать вердикт' : 'Ввести другие данные';
     show('#dead');
     return;
   }
@@ -1932,47 +1961,6 @@ $('#eulaGo').addEventListener('click', function(){
   startScan(pending.name, pending.iso);
 });
 
-$('#reopen').addEventListener('click', function(){
-  audioResume();
-  var r = validate();
-  if(!r) return;
-  startScan(r.name, r.iso);
-});
-
-/*
-  Вердикт привязан к аккаунту, поэтому «ДАННЫЕ» и «К анкете» не стирают
-  запись Реестра — они просто возвращают к форме. Полная очистка доступна
-  только в локальном режиме (вне Telegram).
-*/
-function backToForm(){
-  stopCountdown();
-  $('#lifeFill').style.width = '0%';
-  $('#pctlFill').style.width = '0%';
-  enterForm();
-}
-$('#resetBtn').addEventListener('click', backToForm);
-$('#againBtn').addEventListener('click', backToForm);
-
-$('#hideBtn').addEventListener('click', function(){
-  if(!current) return backToForm();
-  blip(420, 0.05);
-  haptic('impact', 'light');
-  startScan(current.name, current.birthISO);
-});
-
-$('#deadBack').addEventListener('click', function(){
-  if(current && current.bound){
-    /* аккаунт привязан — обжалованию не подлежит */
-    $('#deadNote').textContent = 'ОТКАЗАНО. ВЕРДИКТ ОБЖАЛОВАНИЮ НЕ ПОДЛЕЖИТ.';
-    blip(150, 0.08);
-    haptic('notify', 'error');
-    flash();
-    return;
-  }
-  try{ localStorage.removeItem(LS_KEY); }catch(e){}
-  current = null;
-  enterForm();
-});
 $('#sndBtn').addEventListener('click', function(){
   soundOn = !soundOn;
   this.textContent = 'ЗВУК: ' + (soundOn ? 'ВКЛ' : 'ВЫКЛ');
@@ -2009,7 +1997,7 @@ document.addEventListener('click', audioResume, { once:true });
 setTimeout(function(){
   if(!$('#splash').classList.contains('gone')){
     $('#splash').classList.add('gone');
-    enterForm();
+    route();
   }
 }, 5000);
 
