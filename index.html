@@ -70,18 +70,91 @@ button{background:none;border:0;cursor:pointer}
 #flash.on{opacity:.85;transition:opacity .02s linear}
 #scare{
   position:fixed;inset:0;z-index:960;display:none;
-  align-items:center;justify-content:center;background:#000;
+  align-items:center;justify-content:center;background:#000;overflow:hidden;
 }
-#scare.on{display:flex;animation:scareShake .16s steps(2) 2}
-#scare svg{width:62vmin;height:auto;filter:drop-shadow(0 0 30px rgba(255,30,45,.8))}
+#scare.on{display:flex}
+/* чёрная дыра перед ударом */
+#scare .void{position:absolute;inset:0;background:#000}
+/* лицо: три хроматических слоя */
+#scare .face{
+  position:absolute;top:50%;left:50%;width:min(86vmin,560px);height:auto;
+  transform:translate(-50%,-50%);
+}
+#scare.on .face{animation:faceSlam .46s cubic-bezier(.12,.85,.18,1) both}
+#scare .f-r{
+  left:calc(50% - 7px);filter:sepia(1) saturate(9) hue-rotate(-38deg) brightness(1.1);
+  mix-blend-mode:screen;opacity:.85;
+}
+#scare .f-c{
+  left:calc(50% + 7px);filter:sepia(1) saturate(7) hue-rotate(140deg) brightness(1.05);
+  mix-blend-mode:screen;opacity:.7;
+}
+#scare .f-m{filter:contrast(1.55) brightness(1.06) saturate(.55)}
+#scare.on .f-m{animation:faceSlam .46s cubic-bezier(.12,.85,.18,1) both,faceJit .07s steps(2) 7 .12s}
+@keyframes faceSlam{
+  0%{transform:translate(-50%,-50%) scale(3.4) rotate(-4deg);opacity:0;filter:blur(14px)}
+  10%{opacity:1}
+  60%{filter:blur(0)}
+  100%{transform:translate(-50%,-50%) scale(1.03) rotate(0);opacity:1}
+}
+@keyframes faceJit{
+  0%{transform:translate(-50%,-50%) scale(1.03)}
+  25%{transform:translate(calc(-50% - 9px),calc(-50% + 6px)) scale(1.06)}
+  50%{transform:translate(calc(-50% + 8px),calc(-50% - 7px)) scale(1.01)}
+  75%{transform:translate(calc(-50% - 5px),calc(-50% - 4px)) scale(1.08)}
+  100%{transform:translate(-50%,-50%) scale(1.03)}
+}
+/* строб-вспышки поверх лица */
+#scare .strobe{
+  position:absolute;inset:0;background:#fff;opacity:0;mix-blend-mode:overlay;
+}
+#scare.on .strobe{animation:strobe .5s steps(1) both}
+@keyframes strobe{
+  0%{opacity:0}6%{opacity:.9}9%{opacity:0}18%{opacity:.75}21%{opacity:0}
+  34%{opacity:.6}37%{opacity:0}52%{opacity:.5}55%{opacity:0}100%{opacity:0}
+}
+/* статика поверх всего */
+#scare .st{
+  position:absolute;inset:-20%;opacity:.5;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='4' stitchTiles='stitch'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>");
+}
+#scare.on .st{animation:grainShift .1s steps(2) infinite}
+/* красное пульсирующее кольцо за лицом */
+#scare .ring{
+  position:absolute;top:50%;left:50%;width:120vmin;height:120vmin;border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle,rgba(255,30,45,.34),rgba(120,0,8,.16) 45%,transparent 70%);
+}
+#scare.on .ring{animation:ringPulse .5s ease-out both}
+@keyframes ringPulse{0%{transform:translate(-50%,-50%) scale(.2);opacity:0}20%{opacity:1}100%{transform:translate(-50%,-50%) scale(1.5);opacity:0}}
+/* тёмные полосы-помехи */
+#scare .bars{
+  position:absolute;inset:0;mix-blend-mode:multiply;opacity:.85;
+  background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0 6px,rgba(0,0,0,.9) 6px 9px);
+}
+#scare.on .bars{animation:barsRoll .3s linear infinite}
+@keyframes barsRoll{0%{background-position:0 0}100%{background-position:0 22px}}
+/* вся сцена дёргается */
+#scare.on .shake{position:absolute;inset:0;animation:scareShake .09s steps(2) 8}
 @keyframes scareShake{
   0%{transform:translate(0,0) scale(1)}
-  33%{transform:translate(-6px,4px) scale(1.04)}
-  66%{transform:translate(7px,-5px) scale(.98)}
+  25%{transform:translate(-11px,7px) scale(1.05)}
+  50%{transform:translate(12px,-9px) scale(.97)}
+  75%{transform:translate(-8px,-6px) scale(1.07)}
   100%{transform:translate(0,0) scale(1.02)}
 }
+/* сублиминальная предварительная вспышка лица (почти не видна) */
+#subface{
+  position:fixed;inset:0;z-index:940;display:none;align-items:center;justify-content:center;
+  background:transparent;pointer-events:none;
+}
+#subface.on{display:flex;animation:subBlink .09s steps(1) both}
+#subface svg{width:min(70vmin,440px);height:auto;opacity:.07;filter:blur(1px) contrast(1.4)}
+@keyframes subBlink{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){
-  #grain,#scare.on{animation:none}
+  #grain,#scare.on .st,#scare.on .bars,#scare.on .shake{animation:none}
+  #scare.on .face,#scare.on .f-m{animation:none;transform:translate(-50%,-50%) scale(1)}
+  #subface.on{animation:none;opacity:.05}
 }
 
 /* ───────── SHELL ───────── */
@@ -520,17 +593,54 @@ button{background:none;border:0;cursor:pointer}
 <div class="ovl" id="scanlines"></div>
 <div class="ovl" id="vignette"></div>
 <div class="ovl" id="flash"></div>
+
+<!-- общее гротескное лицо: рисуется один раз, переиспользуется слоями -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="warp" x="-25%" y="-25%" width="150%" height="150%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.014 0.05" numOctaves="2" seed="9" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="13"/>
+    </filter>
+    <radialGradient id="faceg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#efeae0"/>
+      <stop offset="62%" stop-color="#c9c2b6"/>
+      <stop offset="100%" stop-color="#57534b"/>
+    </radialGradient>
+    <symbol id="faceShape" viewBox="0 0 200 260">
+      <g filter="url(#warp)">
+        <path fill="url(#faceg)" d="M100 4C55 4 27 38 27 86c0 30 8 48 16 66 8 17 12 30 12 46 0 34 20 58 45 58s45-24 45-58c0-16 4-29 12-46 8-18 16-36 16-66 0-48-28-82-73-82z"/>
+        <ellipse cx="64" cy="100" rx="26" ry="35" fill="#000"/>
+        <ellipse cx="136" cy="100" rx="26" ry="35" fill="#000"/>
+        <circle cx="68" cy="108" r="4" fill="#ff1e2d"/>
+        <circle cx="132" cy="108" r="4" fill="#ff1e2d"/>
+        <path d="M100 138l-9 20h18z" fill="#000" opacity=".85"/>
+        <ellipse cx="100" cy="200" rx="25" ry="42" fill="#000"/>
+        <path fill="#d8d2c6" d="M80 166h8v14h-8zm12 0h8v16h-8zm12 0h8v14h-8zm12 0h8v12h-8z"/>
+        <g stroke="#2b2823" stroke-width="1.4" fill="none" opacity=".8">
+          <path d="M52 40c8 14 4 26 10 40"/>
+          <path d="M148 44c-7 12-3 26-9 38"/>
+          <path d="M96 22c2 12-2 20 1 30"/>
+          <path d="M40 132c10 6 18 4 26 10"/>
+          <path d="M160 136c-9 5-17 4-25 9"/>
+        </g>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
 <div id="scare">
-  <svg viewBox="0 0 200 226" xmlns="http://www.w3.org/2000/svg">
-    <path fill="#f2f2f2" d="M100 6C53 6 21 40 21 86c0 27 10 42 21 55 7 8 9 14 9 23v15c0 11 9 20 20 20h58c11 0 20-9 20-20v-15c0-9 2-15 9-23 11-13 21-28 21-55 0-46-32-80-79-80z"/>
-    <ellipse cx="67" cy="94" rx="25" ry="30" fill="#000"/>
-    <ellipse cx="133" cy="94" rx="25" ry="30" fill="#000"/>
-    <circle cx="71" cy="100" r="6" fill="#ff1e2d"/>
-    <circle cx="129" cy="100" r="6" fill="#ff1e2d"/>
-    <path d="M100 118 86 150h28z" fill="#000"/>
-    <path fill="#000" d="M56 168h14v34H56zm22 0h14v34H78zm22 0h14v34h-14zm22 0h14v34h-14zm22 0h6v34h-6zM44 168h10v34H44z"/>
-  </svg>
+  <div class="void"></div>
+  <div class="shake">
+    <div class="ring"></div>
+    <svg class="face f-r" viewBox="0 0 200 260"><use href="#faceShape"/></svg>
+    <svg class="face f-c" viewBox="0 0 200 260"><use href="#faceShape"/></svg>
+    <svg class="face f-m" viewBox="0 0 200 260"><use href="#faceShape"/></svg>
+    <div class="bars"></div>
+    <div class="st"></div>
+    <div class="strobe"></div>
+  </div>
 </div>
+<div id="subface"><svg viewBox="0 0 200 260"><use href="#faceShape"/></svg></div>
 
 <!-- SPLASH -->
 <div id="splash">
@@ -966,22 +1076,41 @@ function knell(){
   g2.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
   n.connect(f2); f2.connect(g2); g2.connect(master); n.start(t); n.stop(t + 1.5);
 }
-function scareNoise(){
+/* слоёный крик: шриек + рык + суб-бум + диссонанс */
+function scream(){
   if(!actx || !soundOn) return;
-  var t = actx.currentTime, n = actx.createBufferSource(); n.buffer = noiseBuf(0.5);
-  var f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 0.7;
-  var g = actx.createGain();
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.linearRampToValueAtTime(0.5, t + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
-  n.connect(f); f.connect(g); g.connect(master); n.start(t); n.stop(t + 0.5);
-  var o = actx.createOscillator(), og = actx.createGain();
-  o.type = 'sawtooth';
-  o.frequency.setValueAtTime(1200, t);
-  o.frequency.exponentialRampToValueAtTime(90, t + 0.35);
-  og.gain.setValueAtTime(0.25, t);
-  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
-  o.connect(og); og.connect(master); o.start(t); o.stop(t + 0.42);
+  var t = actx.currentTime;
+  var n = actx.createBufferSource(); n.buffer = noiseBuf(0.9); n.loop = true;
+  var bf = actx.createBiquadFilter(); bf.type = 'bandpass'; bf.Q.value = 2.2;
+  bf.frequency.setValueAtTime(3200, t);
+  bf.frequency.exponentialRampToValueAtTime(320, t + 0.7);
+  var ng = actx.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.linearRampToValueAtTime(0.62, t + 0.012);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.85);
+  n.connect(bf); bf.connect(ng); ng.connect(master); n.start(t); n.stop(t + 0.9);
+
+  [[980, 70], [742, 52]].forEach(function(p, i){
+    var o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(p[0], t);
+    o.frequency.exponentialRampToValueAtTime(p[1], t + 0.6);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.3 - i * 0.08, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.75);
+  });
+
+  boom(0.6);
+
+  [110, 116.5, 233].forEach(function(f, i){
+    var o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'square'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.12 - i * 0.03, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.55);
+  });
 }
 function droneStart(){
   if(!actx || !soundOn || droneNodes) return;
@@ -1338,13 +1467,43 @@ function flash(){
   f.classList.add('on');
   setTimeout(function(){ f.classList.remove('on'); }, 90);
 }
+var scareBusy = false;
 function scare(){
-  if(reduceMotion) return;
+  if(reduceMotion || scareBusy) return;
+  scareBusy = true;
   var s = $('#scare');
-  s.classList.add('on');
-  scareNoise();
-  haptic('notify', 'error');
-  setTimeout(function(){ s.classList.remove('on'); }, 190);
+
+  /* 1) чёрная пауза: звук и картинка обрываются на ~110мс — тишина перед ударом */
+  droneLevel(0);
+  setTimeout(function(){
+    /* 2) удар: лицо влетает с 3.4x, хроматика, строб, статика, тряска */
+    s.classList.add('on');
+    scream();
+    haptic('notify', 'error');
+    setTimeout(function(){ haptic('impact', 'heavy'); }, 90);
+    setTimeout(function(){ haptic('notify', 'error'); }, 210);
+
+    setTimeout(function(){
+      s.classList.remove('on');
+      droneLevel(intensity);
+      scareBusy = false;
+      /* 3) у трети случаев — второй, слабый удар вдогонку, когда уже отпустило */
+      if(Math.random() < 0.3){
+        setTimeout(function(){
+          flash();
+          boom(0.42);
+          haptic('notify', 'warning');
+        }, 260 + Math.random() * 460);
+      }
+    }, 620);
+  }, 110);
+}
+/* сублиминальная вспышка лица на грани восприятия */
+function subFlash(){
+  if(reduceMotion) return;
+  var el = $('#subface');
+  el.classList.add('on');
+  setTimeout(function(){ el.classList.remove('on'); }, 110);
 }
 
 /* ═══════════ BOOT SPLASH ═══════════ */
@@ -1520,7 +1679,7 @@ function startScan(name, birthISO){
   var saved = loadSaved(name, birthISO);
   var v = computeVerdict(name, birthISO, saved ? saved.deathISO : null);
 
-  var prog = 0, logIdx = 0, stageIdx = 0, scared = false, done = false, riserOn = false;
+  var prog = 0, logIdx = 0, stageIdx = 0, scared = false, done = false, riserOn = false, subbed = false;
   var dur = 8200;
   var t0 = Date.now();
   intensity = 0;
@@ -1553,6 +1712,12 @@ function startScan(name, birthISO){
       logEl.appendChild(d);
       while(logEl.children.length > 7) logEl.removeChild(logEl.firstChild);
       blip(1100, 0.02);
+    }
+
+    /* сублиминал: на ~55% лицо мелькает на грани восприятия */
+    if(!subbed && prog >= 55){
+      subbed = true;
+      subFlash();
     }
 
     /* скример на ~86% */
